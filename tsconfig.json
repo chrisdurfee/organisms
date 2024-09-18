@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "allowJs": true, // Allows TypeScript to process JS files
+        "checkJs": true, // Enables type checking for JS files, based on your JSDoc comments
+        "emitDeclarationOnly": true, // Instructs the compiler to only emit `.d.ts` declaration files
+        "declaration": true, // Enables generation of declaration files
+        "declarationDir": "./dist/types",
+        "outDir": "./dist",
+        "noEmit": false, // Ensures that files are emitted
+        "esModuleInterop": true,
+        "module": "ESNext", // Specifies the module system, adjust according to your project's module system
+        "target": "ESNext", // Set the target ECMAScript version according to your project's needs
+        "baseUrl": "./",
+        "paths": {
+            "@base-framework/base": ["node_modules/@base-framework/base/dist/types/base.d.ts"]
+        }
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules/**/*"
+    ]
+}
