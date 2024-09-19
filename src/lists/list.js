@@ -1,44 +1,79 @@
-import { Button, Div, Form, H1, Input, Li, Ul } from '@base-framework/atoms';
+import { Div } from '@base-framework/atoms';
 import { Data, Jot } from '@base-framework/base';
 
 export const List = Jot(
 {
-    // @ts-ignore
-	setData(){ new Data({ [this.prop]: [] })},
-
-	// handle form submission
-    handleSubmit(event)
+    /**
+     * This will set the default data.
+     *
+     * @returns {object}
+     */
+	setData()
     {
-        event.preventDefault();
-        const form = event.target;
-        const input = form.querySelector('input');
-
-        // add the new to-do item to the array of items
         // @ts-ignore
-        this.data.push(this.prop, input.value);
-        input.value = '';
+        return new Data({ [this.prop]: [] })
     },
-
-    // handle item removal
-    // @ts-ignore
-    remove(index){ this.data.splice(this.prop, index)},
 
 	render()
     {
-        return Div([
-            H1('To-Do App'),
-            // @ts-ignore
-            Form({ submit: (e) => this.handleSubmit(e) }, [
-                Input({ placeholder: 'Add a new item' }),
-                Button({ type: 'submit' }, 'Add')
-            ]),
-            Ul({
-                for: ['items', (text, index) => Li({
-                    text,
-                    // @ts-ignore
-                    button: Button({ click: () => this.handleRemove(index) }, 'Remove')
-                })]
-            })
-        ]);
+        // @ts-ignore
+        const rowCallBack = this.row.bind(this);
+
+        return Div({
+            class: 'list',
+            for: ['items', rowCallBack]
+        });
+    },
+
+    /**
+     * This will create a row for each item.
+     *
+     * @param {*} item
+     * @param {number} index
+     * @returns {object|null}
+     */
+    row(item, index)
+    {
+        // @ts-ignore
+        if (typeof this.rowItem !== 'function')
+        {
+            return null;
+        }
+
+        if (typeof item === 'object')
+        {
+            item.index = index;
+        }
+
+        // @ts-ignore
+        return this.rowItem(item);
+    },
+
+    /**
+     * This will delete an item from the list.
+     *
+     * @param {number} index
+     * @returns {void}
+     */
+    delete(index)
+    {
+        // @ts-ignore
+        this.data.delete(`${this.prop}[${index}]`);
+    },
+
+    replace(index, item)
+    {
+        // @ts-ignore
+        this.data.set(`${this.prop}`, item);
+    },
+
+    append(items)
+    {
+
+    },
+
+    prepend(items)
+    {
+
     }
 });
