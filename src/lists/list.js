@@ -1,6 +1,7 @@
 import { Div } from '@base-framework/atoms';
 import { Data, Jot } from '@base-framework/base';
-import { ChildHelper } from 'src/utils/child-helper';
+import { ChildHelper } from 'src/utils/child-helper.js';
+import { DataHelper } from 'src/utils/data-helper.js';
 
 export const List = Jot(
 {
@@ -62,10 +63,24 @@ export const List = Jot(
         this.data.delete(`${this.prop}[${index}]`);
     },
 
+    /**
+     * This will replace an item in the list.
+     *
+     * @param {number} index
+     * @param {*} item
+     * @returns {void}
+     */
     replace(index, item)
     {
         // @ts-ignore
         this.data.set(`${this.prop}[${index}]`, item);
+
+        // @ts-ignore
+        const ele = ChildHelper.get(this.panel, index);
+
+        // @ts-ignore
+        const row = this.row(item, index);
+        ChildHelper.rebuild(row, ele, this);
     },
 
     /**
@@ -103,6 +118,29 @@ export const List = Jot(
 
         // @ts-ignore
         ChildHelper.append(rows, this.panel, this);
+    },
+
+    mingle(newItems)
+    {
+        // @ts-ignore
+        const oldItems = this.data[this.prop];
+
+        // @ts-ignore
+        const changes = DataHelper.diff(oldItems, newItems, this.key);
+        changes.changes.forEach((change) =>
+        {
+            const { index, item, status } = change;
+            if (status === 'added')
+            {
+                // @ts-ignore
+                this.append(item, index);
+            }
+            else if (status === 'updated')
+            {
+                // @ts-ignore
+                this.replace(index, item);
+            }
+        });
     },
 
     /**

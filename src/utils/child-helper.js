@@ -82,13 +82,14 @@ export class ChildHelper
         }
 
         // get child index from parent
-        const index = parent.childNodes.indexOf(oldChild);
+        const container = oldChild.parentNode;
+        const index = container.children.indexOf(oldChild);
         Html.removeChild(oldChild);
 
         const frag = Builder.build(layout, null, parent);
 
         // append to parent at index
-        parent.insertBefore(frag, parent.childNodes[index]);
+        container.insertBefore(frag, container.childNodes[index]);
     }
 
     /**
