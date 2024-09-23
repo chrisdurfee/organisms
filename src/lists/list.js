@@ -64,12 +64,27 @@ export const List = Jot(
     replace(index, item)
     {
         // @ts-ignore
-        this.data.set(`${this.prop}`, item);
+        this.data.set(`${this.prop}[${index}]`, item);
     },
 
     append(items)
     {
+        if (!Array.isArray(items))
+        {
+            items = [items];
+        }
 
+        const rows = [];
+        // @ts-ignore
+        let lastIndex = this.data[this.prop].length - 1;
+        items.forEach((item) =>
+        {
+            lastIndex++;
+            // @ts-ignore
+            rows.push(this.row(item, lastIndex));
+            // @ts-ignore
+            this.data.set(`${this.prop}[${lastIndex}]`, item);
+        });
     },
 
     prepend(items)
