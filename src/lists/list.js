@@ -1,5 +1,6 @@
 import { Div } from '@base-framework/atoms';
 import { Data, Jot } from '@base-framework/base';
+import { ChildHelper } from 'src/utils/child-helper';
 
 export const List = Jot(
 {
@@ -67,6 +68,12 @@ export const List = Jot(
         this.data.set(`${this.prop}[${index}]`, item);
     },
 
+    /**
+     * This will append items to the list.
+     *
+     * @param {array|object} items
+     * @returns {void}
+     */
     append(items)
     {
         if (!Array.isArray(items))
@@ -80,15 +87,58 @@ export const List = Jot(
         items.forEach((item) =>
         {
             lastIndex++;
+
+            /**
+             * This will build the new rows that will be appended.
+             */
             // @ts-ignore
             rows.push(this.row(item, lastIndex));
+
+            /**
+             * This will silently add the new rows without re-rendering the entire list.
+             */
             // @ts-ignore
             this.data.set(`${this.prop}[${lastIndex}]`, item);
         });
+
+        // @ts-ignore
+        ChildHelper.append(rows, this.panel, this);
     },
 
+    /**
+     * This will prepend items to the list.
+     *
+     * @param {array|object} items
+     * @returns {void}
+     */
     prepend(items)
     {
+        if (!Array.isArray(items))
+        {
+            items = [items];
+        }
 
+        const rows = [];
+        // @ts-ignore
+        let lastIndex = this.data[this.prop].length - 1;
+        items.forEach((item) =>
+        {
+            lastIndex++;
+
+            /**
+             * This will build the new rows that will be appended.
+             */
+            // @ts-ignore
+            rows.push(this.row(item, lastIndex));
+
+            /**
+             * This will silently add the new rows without re-rendering the entire list.
+             */
+            // @ts-ignore
+            this.data.set(`${this.prop}[${lastIndex}]`, item);
+        });
+
+        // @ts-ignore
+        ChildHelper.prepend(rows, this.panel, this);
     }
 });

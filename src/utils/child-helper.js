@@ -1,3 +1,5 @@
+import { Builder, Html } from "@base-framework/base";
+
 /**
  * ChildHelper
  *
@@ -62,5 +64,67 @@ export class ChildHelper
     static previous(node)
     {
         return node?.previousSibling ?? null;
+    }
+
+    /**
+     * This will rebuild a child layout.
+     *
+     * @param {object} layout
+     * @param {object} oldChild
+     * @param {object} parent
+     * @returns {void}
+     */
+    static rebuild(layout, oldChild, parent)
+    {
+        if (!oldChild)
+        {
+            return;
+        }
+
+        // get child index from parent
+        const index = parent.childNodes.indexOf(oldChild);
+        Html.removeChild(oldChild);
+
+        const frag = Builder.build(layout, null, parent);
+
+        // append to parent at index
+        parent.insertBefore(frag, parent.childNodes[index]);
+    }
+
+    /**
+     * This will rebuild a child layout.
+     *
+     * @param {object} childrenLayout
+     * @param {object} container
+     * @param {object} parent
+     * @returns {void}
+     */
+    static append(childrenLayout, container, parent)
+    {
+        if (!childrenLayout)
+        {
+            return;
+        }
+
+        Builder.build(childrenLayout, container, parent);
+    }
+
+    /**
+     * This will rebuild a child layout.
+     *
+     * @param {object} childrenLayout
+     * @param {object} container
+     * @param {object} parent
+     * @returns {void}
+     */
+    static prepend(childrenLayout, container, parent)
+    {
+        if (!childrenLayout)
+        {
+            return;
+        }
+
+        const frag = Builder.build(childrenLayout, null, parent);
+        parent.insertBefore(frag, container.firstChild);
     }
 }
