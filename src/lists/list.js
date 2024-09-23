@@ -83,6 +83,18 @@ export const List = Jot(
         ChildHelper.rebuild(row, ele, this);
     },
 
+    deleteRemoved(items)
+    {
+        const deleteItems = [];
+        items.forEach((deletedItem) =>
+        {
+            const { index } = deletedItem;
+            // @ts-ignore
+            const item = ChildHelper.get(this.panel, index);
+            deleteItems.push(item);
+        });
+    },
+
     /**
      * This will append items to the list.
      *
@@ -140,6 +152,12 @@ export const List = Jot(
                 // @ts-ignore
                 this.replace(index, item);
             }
+        });
+
+        changes.deletedItems.forEach((deletedItem) =>
+        {
+            // @ts-ignore
+            this.delete(deletedItem.index);
         });
     },
 

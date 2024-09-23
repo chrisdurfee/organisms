@@ -84,12 +84,26 @@ export class ChildHelper
         // get child index from parent
         const container = oldChild.parentNode;
         const index = container.children.indexOf(oldChild);
-        Html.removeChild(oldChild);
+        this.remove(oldChild);
 
         const frag = Builder.build(layout, null, parent);
 
         // append to parent at index
         container.insertBefore(frag, container.childNodes[index]);
+    }
+
+    /**
+     * This will remove a child.
+     *
+     * @param {object} node
+     * @returns {void}
+     */
+    static remove(node)
+    {
+        if (node)
+        {
+            Html.removeChild(node);
+        }
     }
 
     /**
