@@ -67,14 +67,14 @@ export class ChildHelper
     }
 
     /**
-     * This will rebuild a child layout.
+     * This will replace a child layout.
      *
      * @param {object} layout
      * @param {object} oldChild
      * @param {object} parent
      * @returns {void}
      */
-    static rebuild(layout, oldChild, parent)
+    static replace(layout, oldChild, parent)
     {
         if (!oldChild)
         {
@@ -107,7 +107,7 @@ export class ChildHelper
     }
 
     /**
-     * This will rebuild a child layout.
+     * This will append a child layout.
      *
      * @param {object} childrenLayout
      * @param {object} container
@@ -125,7 +125,7 @@ export class ChildHelper
     }
 
     /**
-     * This will rebuild a child layout.
+     * This will prepend a child layout.
      *
      * @param {object} childrenLayout
      * @param {object} container
