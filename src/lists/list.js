@@ -84,19 +84,24 @@ export const List = Jot(
      * This will replace an item in the list.
      *
      * @protected
-     * @param {object} item
+     * @param {object} row
      * @returns {void}
      */
-    replace(item, status)
+    replace(row)
     {
         // @ts-ignore
-        if (status === 'added')
+        const item = row.item;
+        if (row.status === 'added')
         {
             // @ts-ignore
             this.append(item);
             return;
         }
 
+        // @ts-ignore
+        const keyValue = item[this.key];
+        // @ts-ignore
+        const index = this.findIndexByKey(keyValue);
         // @ts-ignore
         this.data.set(`items[${index}]`, item);
         // @ts-ignore
@@ -170,9 +175,10 @@ export const List = Jot(
      *
      * @public
      * @param {Array<Object>} newItems
+     * @param {boolean} withDelete
      * @returns {void}
      */
-    mingle(newItems)
+    mingle(newItems, withDelete = false)
     {
         // @ts-ignore
         const oldItems = this.data.items;
@@ -185,13 +191,22 @@ export const List = Jot(
         const changes = DataHelper.diff(oldItems, newItems, this.key);
 
         /**
+         * We want to delete the items before adding and updating the
+         * new items.
+         */
+        if (withDelete && changes.deletedItems.length > 0)
+        {
+            // @ts-ignore
+            this.remove(changes.deletedItems);
+        }
+
+        /**
          * This will add or update the new rows.
          */
-        changes.changes.forEach((change) =>
+        changes.changes.forEach((row) =>
         {
-            const { item, status } = change;
             // @ts-ignore
-            this.replace(item, status);
+            this.replace(row);
         });
     },
 
@@ -216,7 +231,7 @@ export const List = Jot(
         // @ts-ignore
         const rowItems = this.data.items;
         let lastIndex = rowItems.length - 1;
-        items.forEach((item) =>
+        items.reverse().forEach((item) =>
         {
             lastIndex++;
 

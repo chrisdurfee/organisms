@@ -65,13 +65,9 @@ export class DataHelper
 		});
 
 		// Remaining items in oldItemsMap are deleted
-		oldItemsMap.forEach(({ item: oldItem, index: oldIndex }) =>
+		oldItemsMap.forEach(({ item: oldItem }) =>
 		{
-			deletedItems.push({
-				index: oldIndex,
-				item: oldItem,
-				status: 'deleted'
-			});
+			deletedItems.push(oldItem);
 		});
 
 		return {
