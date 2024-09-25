@@ -67,6 +67,29 @@ export class ChildHelper
     }
 
     /**
+     * This will get the index of the node.
+     *
+     * @param {object} node
+     * @returns {number}
+     */
+    static index(node)
+    {
+        return node?.parentNode?.children.indexOf(node) ?? -1;
+    }
+
+    /**
+     * This will get the previous index of the node.
+     *
+     * @param {object} node
+     * @returns {number}
+     */
+    static getPreviousIndex(node)
+    {
+        let index = this.index(node);
+        return (index > 0)? index - 1 : 0;
+    }
+
+    /**
      * This will replace a child layout.
      *
      * @param {object} layout
@@ -82,13 +105,13 @@ export class ChildHelper
         }
 
         // get child index from parent
-        const container = oldChild.parentNode;
-        const index = container.children.indexOf(oldChild);
+        const index = this.getPreviousIndex(oldChild);
         this.remove(oldChild);
 
         const frag = Builder.build(layout, null, parent);
 
         // append to parent at index
+        const container = oldChild.parentNode;
         container.insertBefore(frag, container.childNodes[index]);
     }
 
