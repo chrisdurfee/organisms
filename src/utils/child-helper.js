@@ -105,13 +105,13 @@ export class ChildHelper
         }
 
         // get child index from parent
+        const container = oldChild.parentNode;
         const index = this.getPreviousIndex(oldChild);
         this.remove(oldChild);
 
         const frag = Builder.build(layout, null, parent);
 
         // append to parent at index
-        const container = oldChild.parentNode;
         container.insertBefore(frag, container.childNodes[index]);
     }
 
