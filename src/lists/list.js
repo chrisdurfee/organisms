@@ -19,8 +19,7 @@ export const List = Jot(
      */
 	setData()
     {
-        // @ts-ignore
-        return new Data({ [this.prop]: [] })
+        return new Data({ items: [] })
     },
 
     /**
@@ -34,7 +33,8 @@ export const List = Jot(
         const rowCallBack = this.row.bind(this);
 
         return Div({
-            class: 'list',
+            // @ts-ignore
+            class: `list ${this.class || ''}`,
             for: ['items', rowCallBack]
         });
     },
@@ -73,7 +73,7 @@ export const List = Jot(
     delete(index)
     {
         // @ts-ignore
-        this.data.delete(`${this.prop}[${index}]`);
+        this.data.delete(`items[${index}]`);
     },
 
     /**
@@ -87,7 +87,7 @@ export const List = Jot(
     replace(index, item)
     {
         // @ts-ignore
-        this.data.set(`${this.prop}[${index}]`, item);
+        this.data.set(`items[${index}]`, item);
 
         // @ts-ignore
         const ele = ChildHelper.get(this.panel, index);
@@ -123,7 +123,7 @@ export const List = Jot(
         });
 
         // @ts-ignore
-        const dataRows = this.data[this.prop];
+        const dataRows = this.data.items;
         dataRows.forEach((item, index) =>
         {
             deleteRows.find((deletedRow) =>
@@ -132,7 +132,7 @@ export const List = Jot(
                 if (deletedRow.item[this.key] === item[this.key])
                 {
                     // @ts-ignore
-                    this.data.delete(`${this.prop}[${index}]`);
+                    this.data.delete(`items[${index}]`);
                     ChildHelper.remove(deletedRow.row);
                 }
             });
@@ -155,7 +155,7 @@ export const List = Jot(
 
         const rows = [];
         // @ts-ignore
-        let lastIndex = this.data[this.prop].length - 1;
+        let lastIndex = this.data.items.length - 1;
         items.forEach((item) =>
         {
             lastIndex++;
@@ -170,7 +170,7 @@ export const List = Jot(
              * This will silently add the new rows without re-rendering the entire list.
              */
             // @ts-ignore
-            this.data.set(`${this.prop}[${lastIndex}]`, item);
+            this.data.set(`items[${lastIndex}]`, item);
         });
 
         // @ts-ignore
@@ -187,7 +187,7 @@ export const List = Jot(
     mingle(newItems)
     {
         // @ts-ignore
-        const oldItems = this.data[this.prop];
+        const oldItems = this.data.items;
 
         /**
          * This will diff the old and new items to determine what has
@@ -239,7 +239,7 @@ export const List = Jot(
 
         const rows = [];
         // @ts-ignore
-        let lastIndex = this.data[this.prop].length - 1;
+        let lastIndex = this.data.items.length - 1;
         items.forEach((item) =>
         {
             lastIndex++;
@@ -254,7 +254,7 @@ export const List = Jot(
              * This will silently add the new rows without re-rendering the entire list.
              */
             // @ts-ignore
-            this.data.set(`${this.prop}[${lastIndex}]`, item);
+            this.data.set(`items[${lastIndex}]`, item);
         });
 
         // @ts-ignore
