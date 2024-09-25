@@ -163,6 +163,6 @@ export class ChildHelper
         }
 
         const frag = Builder.build(childrenLayout, null, parent);
-        parent.insertBefore(frag, container.firstChild);
+        container.insertBefore(frag, container.firstChild);
     }
 }

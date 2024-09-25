@@ -19,7 +19,8 @@ export const List = Jot(
      */
 	setData()
     {
-        return new Data({ items: [] })
+        // @ts-ignore
+        return new Data({ items: this.items ?? [] })
     },
 
     /**
