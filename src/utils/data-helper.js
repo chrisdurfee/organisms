@@ -1,4 +1,3 @@
-
 /**
  * This will create a new item.
  *
@@ -16,6 +15,13 @@ const Item = (index, item, status) =>
 	};
 };
 
+/**
+ * DataHelper
+ *
+ * This will help with data manipulation.
+ *
+ * @class
+ */
 export class DataHelper
 {
 	/**

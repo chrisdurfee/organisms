@@ -3,6 +3,13 @@ import { Data, Jot } from '@base-framework/base';
 import { ChildHelper } from 'src/utils/child-helper.js';
 import { DataHelper } from 'src/utils/data-helper.js';
 
+/**
+ * List
+ *
+ * This will create a list component.
+ *
+ * @class
+ */
 export const List = Jot(
 {
     /**
@@ -16,6 +23,11 @@ export const List = Jot(
         return new Data({ [this.prop]: [] })
     },
 
+    /**
+     * This will render the list.
+     *
+     * @returns {object}
+     */
 	render()
     {
         // @ts-ignore
@@ -54,6 +66,7 @@ export const List = Jot(
     /**
      * This will delete an item from the list.
      *
+     * @public
      * @param {number} index
      * @returns {void}
      */
@@ -66,6 +79,7 @@ export const List = Jot(
     /**
      * This will replace an item in the list.
      *
+     * @protected
      * @param {number} index
      * @param {*} item
      * @returns {void}
@@ -83,21 +97,52 @@ export const List = Jot(
         ChildHelper.rebuild(row, ele, this);
     },
 
+    /**
+     * This will delete removed items from the list.
+     *
+     * @protected
+     * @param {array} items
+     * @returns {void}
+     */
     deleteRemoved(items)
     {
-        const deleteItems = [];
-        items.forEach((deletedItem) =>
+        /**
+         * This will get the deleted rows.
+         */
+        const deleteRows = [];
+        items.forEach((item) =>
         {
-            const { index } = deletedItem;
+            const { index } = item;
             // @ts-ignore
-            const item = ChildHelper.get(this.panel, index);
-            deleteItems.push(item);
+            const row = ChildHelper.get(this.panel, index);
+            deleteRows.push({
+                index,
+                item,
+                row
+            });
+        });
+
+        // @ts-ignore
+        const dataRows = this.data[this.prop];
+        dataRows.forEach((item, index) =>
+        {
+            deleteRows.find((deletedRow) =>
+            {
+                // @ts-ignore
+                if (deletedRow.item[this.key] === item[this.key])
+                {
+                    // @ts-ignore
+                    this.data.delete(`${this.prop}[${index}]`);
+                    ChildHelper.remove(deletedRow.row);
+                }
+            });
         });
     },
 
     /**
      * This will append items to the list.
      *
+     * @public
      * @param {array|object} items
      * @returns {void}
      */
@@ -132,13 +177,36 @@ export const List = Jot(
         ChildHelper.append(rows, this.panel, this);
     },
 
+    /**
+     * This will mingle the new items with the old items.
+     *
+     * @public
+     * @param {Array<Object>} newItems
+     * @returns {void}
+     */
     mingle(newItems)
     {
         // @ts-ignore
         const oldItems = this.data[this.prop];
 
+        /**
+         * This will diff the old and new items to determine what has
+         * been added, updated, or deleted.
+         */
         // @ts-ignore
         const changes = DataHelper.diff(oldItems, newItems, this.key);
+
+        /**
+         * We need to update the deleted rows before adding or updating
+         * the new rows. This is because the indexes will change when
+         * we add or update the new rows.
+         */
+        // @ts-ignore
+        this.deleteRemoved(changes.deletedItems);
+
+        /**
+         * This will add or update the new rows.
+         */
         changes.changes.forEach((change) =>
         {
             const { index, item, status } = change;
@@ -153,17 +221,12 @@ export const List = Jot(
                 this.replace(index, item);
             }
         });
-
-        changes.deletedItems.forEach((deletedItem) =>
-        {
-            // @ts-ignore
-            this.delete(deletedItem.index);
-        });
     },
 
     /**
      * This will prepend items to the list.
      *
+     * @public
      * @param {array|object} items
      * @returns {void}
      */
