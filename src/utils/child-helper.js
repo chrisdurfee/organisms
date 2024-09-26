@@ -74,7 +74,13 @@ export class ChildHelper
      */
     static index(node)
     {
-        return node?.parentNode?.children.indexOf(node) ?? -1;
+        if (!node || !node.parentNode)
+		{
+            return -1; // Return -1 if node or its parent doesn't exist
+        }
+
+        const children = node.parentNode.children;
+        return Array.from(children).indexOf(node);
     }
 
     /**
