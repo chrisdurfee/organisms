@@ -1,4 +1,4 @@
-# Base Atoms
+# Base Organisms
 
 **Version**: 1.0.0
 
@@ -8,39 +8,65 @@ This documentation aims to guide the enhancement of component scalability and re
 This module will add default organisms to your project.
 
 ## Atom Scope
-Within our component model, each component autonomously generates its own scope. When components are nested, unique scopes are established at each level. Atoms inherit the scope of their parent component, gaining access to the component's state and data, and enabling directive manipulation and event handling.Organization of atoms is crucial for maintaining a clean and manageable codebase.
+If you need to learn about atomic design, please refer to the [Atomic Design](https://bradfrost.com/blog/post/atomic-web-design/) documentation.
 
-### Collection of Atoms
+To learn more about Base framework or how to build atoms, refer to the [Base](https://github.com/chrisdurfee/base/wiki) documentation.
+
+### Collection of Organisms
 Organisms can be composed of various atoms and reused across different components. This promotes a modular approach to building user interfaces.
 
-## Atom Types
+## Organism Types
 Organisms can be instantiated using various methodologies:
 
-### Function Oragnisms
-These atoms are instantiated with either standard functions or arrow functions, equipped with a props object to transfer properties to the atoms.
+### Oragnism Structure
+Organisms can be created using atoms and components. Atoms are the smallest building blocks of a component, while components are composed of atoms and other components. Organisms are a collection of atoms and components that form a larger structure.
 
 ```typescript
+// Atom
+const Link = Atom((props, children) => ({
+    ...props,
+    children,
+    tag: 'a',
+}));
+
+// Organism Atom
 const Link = Atom((props, children) => (
-    A({...props }, [
+    Link({...props }, [
         Icon({ class: 'icon' }),
         children
     ])
 ));
+
+// Organism Atom with Component
+const Link = Atom((props, children) => (
+    Nav([
+        Ul([
+            Li([
+                Link([
+                    Icon({ class: 'icon' }),
+                    Span('Text')
+                ])
+            ])
+        ])
+    ]),
+    new List({...props }, [
+        children
+    ])
+));
+
+// Organism Function with Component
+const List = (props, children) => Div([
+    Header([
+        H1('Title')
+    ]),
+    new List({...props }, [
+        children
+    ])
+]);
 ```
 
-### Atom Callbacks
-Atoms may be created using the Atom function, which accepts a callback function as its sole parameter. The callback function is passed a props object and children array and returns an object containing the atom's layout.
-
-```typescript
-const Button = Atom((props, children) => ({
-    tag: 'button',
-    ...props,
-    children
-}));
-```
-
-#### Atom Nesting
-Atoms should use composition to nest other atoms. This is achieved by passing the children array to the atoms args.
+#### Organisms Nesting
+Organisms should use composition to nest other atoms, organisms, or components.
 
 ```typescript
 const SecondaryButton = Atom((props, children) => (Button({
@@ -50,36 +76,8 @@ const SecondaryButton = Atom((props, children) => (Button({
 }));
 ```
 
-## Adding Event Listeners
-Event listener callbacks within atoms accept two parameters: the originating event object and the "parent" component object in which the atom resides.
-
-### Accessing the Parent Component in an Atom
-```typescript
-class Page extends Component
-{
-    render()
-    {
-        return Div([
-            SecondaryButton({
-                /**
-                 * This will add a click event listener to the button.
-                 *
-                 * @param {Event} event The event object
-                 * @param {Component} parent The parent component object
-                 * @returns {void}
-                 */
-                click(event, parent) =>
-                {
-                    // Code to access the parent component
-                }
-            })
-        ]);
-    }
-}
-```
-
-## Utilization of Atoms
-To leverage an atom, invoke its function and pass the requisite values via a props and children. The Atoms created with the Atom callback functions support passing optional props or children to the atom. The props object should always be first but if the atom does not require props, the children array or string can be passed as the first argument.
+## Utilization of Organisms
+To leverage an organism, invoke its function and pass the requisite values via a props and children. The organisms created with the Atom callback functions support passing optional props or children to the atom. The props object should always be first but if the atom does not require props, the children array or string can be passed as the first argument.
 
 ```javascript
 // props only
@@ -113,7 +111,7 @@ SecondaryButton({
 })
 ```
 
-The implementation of atoms is aimed at enhancing the readability and modularity of extensive layouts.
+The implementation of both atoms and organisms is aimed at enhancing the readability and modularity of extensive layouts.
 
 ### Illustrative Example of a Complex Layout
 ```typescript
@@ -125,17 +123,3 @@ Section([
     ])
 ])
 ```
-
-## Contributing
-
-Contributions to Base Framework are welcome. Follow these steps to contribute:
-
-- Fork the repository.
-- Create a new branch for your feature or bug fix.
-- Commit your changes with clear, descriptive messages.
-- Push your branch and submit a pull request.
-- Before contributing, read our CONTRIBUTING.md for coding standards and community guidelines.
-
-## License
-
-Base Atoms are licensed under the MIT License. See the LICENSE file for details.
