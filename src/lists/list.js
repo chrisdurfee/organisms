@@ -249,11 +249,17 @@ export const List = Jot(
             rows.push(this.row(item));
         });
 
+        // This will use the get method to get the items as a raw array.
+        // @ts-ignore
+        const newItems = reverseItems.concat(this.data.get('items'));
+
         /**
-         * This will silently add the new rows without re-rendering the entire list.
+         * This will silently add the new rows without re-rendering the entire
+         * list. This will bypass the data object and directly add the items
+         * to the stage.
          */
         // @ts-ignore
-        this.data.stage.items = reverseItems.concat(this.data.get('items'));
+        this.data.stage.items = newItems;
 
         // @ts-ignore
         ChildHelper.prepend(rows, this.panel, this);
