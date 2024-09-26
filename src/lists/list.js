@@ -90,6 +90,11 @@ export const List = Jot(
      */
     replace(row)
     {
+        if (row.status === 'unchanged')
+        {
+            return;
+        }
+
         // @ts-ignore
         const item = row.item;
         if (row.status === 'added')
@@ -103,6 +108,11 @@ export const List = Jot(
         const keyValue = item[this.key];
         // @ts-ignore
         const index = this.findIndexByKey(keyValue);
+        if (index === -1)
+        {
+            return;
+        }
+
         // @ts-ignore
         this.data.set(`items[${index}]`, item);
         // @ts-ignore
@@ -229,24 +239,21 @@ export const List = Jot(
          * This will get all the new rows to be batched later.
          */
         const rows = [];
-        // @ts-ignore
-        const rowItems = this.data.items;
-        let lastIndex = rowItems.length - 1;
-        items.reverse().forEach((item) =>
+        const reverseItems = items.reverse();
+        reverseItems.forEach((item) =>
         {
-            lastIndex++;
-
             /**
              * This will build the new rows that will be appended.
              */
             // @ts-ignore
             rows.push(this.row(item));
-
-            /**
-             * This will silently add the new rows without re-rendering the entire list.
-             */
-            rowItems.unshift(item);
         });
+
+        /**
+         * This will silently add the new rows without re-rendering the entire list.
+         */
+        // @ts-ignore
+        this.data.stage.items = reverseItems.concat(this.data.items);
 
         // @ts-ignore
         ChildHelper.prepend(rows, this.panel, this);
