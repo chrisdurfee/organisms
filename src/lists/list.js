@@ -192,7 +192,7 @@ export const List = Jot(
     mingle(newItems, withDelete = false)
     {
         // @ts-ignore
-        const oldItems = this.data.items;
+        const oldItems = this.data.get('items');
 
         /**
          * This will diff the old and new items to determine what has
@@ -253,7 +253,7 @@ export const List = Jot(
          * This will silently add the new rows without re-rendering the entire list.
          */
         // @ts-ignore
-        this.data.stage.items = reverseItems.concat(this.data.items);
+        this.data.stage.items = reverseItems.concat(this.data.get('items'));
 
         // @ts-ignore
         ChildHelper.prepend(rows, this.panel, this);
