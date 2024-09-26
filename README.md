@@ -7,19 +7,13 @@ This documentation aims to guide the enhancement of component scalability and re
 
 This module will add default organisms to your project.
 
-## Atom Scope
+## Atomic Design
 If you need to learn about atomic design, please refer to the [Atomic Design](https://bradfrost.com/blog/post/atomic-web-design/) documentation.
 
 To learn more about Base framework or how to build atoms, refer to the [Base](https://github.com/chrisdurfee/base/wiki) documentation.
 
-### Collection of Organisms
-Organisms can be composed of various atoms and reused across different components. This promotes a modular approach to building user interfaces.
-
-## Organism Types
-Organisms can be instantiated using various methodologies:
-
 ### Oragnism Structure
-Organisms can be created using atoms and components. Atoms are the smallest building blocks of a component, while components are composed of atoms and other components. Organisms are a collection of atoms and components that form a larger structure.
+Organisms can be created using atoms, other organisms, and components. Atoms are the smallest building blocks of a component, while components are composed of atoms and other components. Organisms are a collection of atoms and components that form a larger structure.
 
 ```typescript
 // Atom
@@ -109,17 +103,4 @@ SecondaryButton({
         // Handle the click event
     }
 })
-```
-
-The implementation of both atoms and organisms is aimed at enhancing the readability and modularity of extensive layouts.
-
-### Illustrative Example of a Complex Layout
-```typescript
-Section([
-    Article({ class: 'post' }, [
-        Header([
-            H1('Title')
-        ])
-    ])
-])
 ```
