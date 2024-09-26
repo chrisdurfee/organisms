@@ -106,7 +106,6 @@ export class ChildHelper
 
         // get child index from parent
         const container = oldChild.parentNode;
-        console.log(oldChild, container);
         const index = this.getPreviousIndex(oldChild);
         this.remove(oldChild);
 

@@ -118,8 +118,8 @@ export const List = Jot(
         // @ts-ignore
         const oldRow = ChildHelper.get(this.panel, index);
         // @ts-ignore
-        const newRow = this.row(item, index);
-        ChildHelper.replace(oldRow, newRow);
+        const layout = this.row(item, index);
+        ChildHelper.replace(layout, oldRow, this);
     },
 
     /**
