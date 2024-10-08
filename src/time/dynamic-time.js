@@ -46,7 +46,7 @@ export class DynamicTime extends Component
     }
 
     /**
-     * This will redner the component.
+     * This will render the component.
      *
      * @returns {object}
      */
