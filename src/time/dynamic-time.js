@@ -27,6 +27,9 @@ timer.start();
  * This will create a dynamic time element that will update
  * the time every minute.
  *
+ * @property {string} dateTime - The date time to display.
+ * @property {function} [filter] - The filter to apply to the date time.
+ *
  * @class
  * @augments Component
  */
