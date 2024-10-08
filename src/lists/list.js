@@ -8,6 +8,10 @@ import { DataHelper } from 'src/utils/data-helper.js';
  *
  * This will create a list component.
  *
+ * @property {string} class - The class to add to the list
+ * @property {string} key - The key to use to identify the items
+ * @property {array} [items] - The items
+ *
  * @class
  */
 export const List = Jot(
