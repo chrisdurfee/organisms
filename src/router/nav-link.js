@@ -64,13 +64,11 @@ export class NavLink extends Component
     {
         // @ts-ignore
         const href = this.href,
-
         // @ts-ignore
         text = this.text,
         watchers = this.setupWatchers(href, text);
 
         return A({
-            tag: 'a',
             // @ts-ignore
             class: this.class || this.className || null,
             onState: ['selected', {
