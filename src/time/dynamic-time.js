@@ -3,22 +3,40 @@ import { Component, SimpleData } from "@base-framework/base";
 import { IntervalTimer } from "src/utils/timer";
 
 /**
- * This will createa simple flat data object to use to bind
- * timer update.
+ * This will create a simple flat data object to use to bind
+ * timer update. This will be used to update the time every
+ * minute.
+ *
+ * This data will be bound to all the dynamic time elements.
+ *
+ * @constant
+ * @type {SimpleData} data
  */
 const data = new SimpleData({
     date: 0
 });
 
 /**
- * This will update the the data value every minute.
+ * @constant
+ * @type {number} MINUTE_INTERVAL
  */
 const MINUTE_INTERVAL = 60000;
+
+/**
+ * This will update the the data value every minute.
+ *
+ * @constant
+ * @type {IntervalTimer} timer
+ */
 const timer = new IntervalTimer(MINUTE_INTERVAL, () =>
 {
     data.increment('date');
 });
 
+/**
+ * This will start the timer to update any dynamic time
+ * elements.
+ */
 timer.start();
 
 /**
@@ -36,7 +54,8 @@ timer.start();
 export class DynamicTime extends Component
 {
     /**
-     * This will set up the component data.
+     * This will set up the component data with the
+     * data created above.
      *
      * @returns {object}
      */
