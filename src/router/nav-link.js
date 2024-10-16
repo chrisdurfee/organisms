@@ -69,6 +69,7 @@ export class NavLink extends Component
         watchers = this.setupWatchers(href, text);
 
         return A({
+            cache: 'link',
             // @ts-ignore
             class: this.class || this.className || null,
             onState: ['selected', {
@@ -79,6 +80,17 @@ export class NavLink extends Component
             nest: this.nest || this.children,
             watch: watchers
         });
+    }
+
+    /**
+     * This will get the link path.
+     *
+     * @returns {string|null}
+     */
+    getLinkPath()
+    {
+        // @ts-ignore
+        return this?.link?.pathname || null;
     }
 
     /**
