@@ -146,6 +146,19 @@ export const List = Jot(
     },
 
     /**
+     * This will set the items in the list.
+     *
+     * @public
+     * @param {array} rows
+     * @returns {void}
+     */
+    setRows(rows)
+    {
+        // @ts-ignore
+        this.data.set('items', rows);
+    },
+
+    /**
      * This will append items to the list.
      *
      * @public
