@@ -159,6 +159,18 @@ export const List = Jot(
     },
 
     /**
+     * This will get the items in the list.
+     *
+     * @public
+     * @returns {array}
+     */
+    getRows()
+    {
+        // @ts-ignore
+        return this.data.get('items');
+    },
+
+    /**
      * This will append items to the list.
      *
      * @public
