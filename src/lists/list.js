@@ -228,7 +228,7 @@ export const List = Jot(
          * been added, updated, or deleted.
          */
         // @ts-ignore
-        const changes = DataHelper.diff(oldItems, newItems, this.key);
+        const changes = DataHelper.diff(oldItems, newItems, this.key, withDelete);
 
         /**
          * We want to delete the items before adding and updating the
