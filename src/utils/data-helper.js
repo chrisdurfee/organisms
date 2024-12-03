@@ -106,24 +106,15 @@ export class DataHelper
 	 */
 	static deepEqual(obj1, obj2)
 	{
-		if (Array.isArray(obj1) && Array.isArray(obj2))
-		{
-			if (obj1.length !== obj2.length) return false;
-
-			return obj1.every((value, index) => this.deepEqual(value, obj2[index]));
-		}
-
-		if (obj1 === obj2)
-		{
-			return true;
-		}
+		if (obj1 === obj2) return true;
 
 		if (
 			typeof obj1 !== 'object' ||
 			obj1 === null ||
 			typeof obj2 !== 'object' ||
 			obj2 === null
-		) {
+		)
+		{
 			return false;
 		}
 
@@ -131,14 +122,22 @@ export class DataHelper
 		const keys2 = Object.keys(obj2);
 		if (keys1.length !== keys2.length)
 		{
-			return false;
+			return false
 		}
 
 		for (const key of keys1)
 		{
-			if (!keys2.includes(key)) return false;
-			if (!this.deepEqual(obj1[key], obj2[key])) return false;
+			if (!keys2.includes(key))
+			{
+				return false;
+			}
+
+			if (!this.deepEqual(obj1[key], obj2[key]))
+			{
+				return false
+			}
 		}
+
 		return true;
 	}
 }
