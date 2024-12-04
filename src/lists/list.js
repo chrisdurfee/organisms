@@ -4,6 +4,14 @@ import { ChildHelper } from 'src/utils/child-helper.js';
 import { DataHelper } from 'src/utils/data-helper.js';
 
 /**
+ * This will clone the data.
+ *
+ * @param {*} data
+ * @returns {*}
+ */
+const clone = (data) => JSON.parse(JSON.stringify(data));
+
+/**
  * List
  *
  * This will create a list component.
@@ -24,7 +32,8 @@ export const List = Jot(
 	setData()
     {
         // @ts-ignore
-        return new Data({ items: this.items ?? [] })
+        const items = (this.items)? clone(this.items) : [];
+        return new Data({ items })
     },
 
     /**
@@ -184,6 +193,8 @@ export const List = Jot(
             items = [items];
         }
 
+        items = clone(items);
+
         /**
          * This will get all the new rows to be batched later.
          */
@@ -220,6 +231,8 @@ export const List = Jot(
      */
     mingle(newItems, withDelete = false)
     {
+        newItems = clone(newItems);
+
         // @ts-ignore
         const oldItems = this.data.get('items');
 
@@ -264,6 +277,8 @@ export const List = Jot(
             items = [items];
         }
 
+        items = clone(items);
+
         /**
          * This will get all the new rows to be batched later.
          */
@@ -287,6 +302,8 @@ export const List = Jot(
          * list. This will bypass the data object and directly add the items
          * to the stage.
          */
+        // @ts-ignore
+        this.data.attributes.items = newItems;
         // @ts-ignore
         this.data.stage.items = newItems;
 
