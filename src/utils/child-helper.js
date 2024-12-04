@@ -91,7 +91,7 @@ export class ChildHelper
      */
     static getPreviousIndex(node)
     {
-        let index = this.index(node);
+        const index = this.index(node);
         return (index > 0)? index - 1 : 0;
     }
 
@@ -110,15 +110,14 @@ export class ChildHelper
             return;
         }
 
-        // get child index from parent
-        const container = oldChild.parentNode;
-        const index = this.getPreviousIndex(oldChild);
-        this.remove(oldChild);
+        /**
+         * Remove the data from the old child before
+         * replacing it with the new child.
+         */
+        Html.removeElementData(oldChild);
 
         const frag = Builder.build(layout, null, parent);
-
-        // append to parent at index
-        container.insertBefore(frag, container.childNodes[index]);
+        oldChild.replaceWith(frag);
     }
 
     /**
