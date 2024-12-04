@@ -30,10 +30,9 @@ export class DataHelper
      * @param {Array<Object>} oldArray - The original array of objects.
      * @param {Array<Object>} newArray - The updated array of objects.
      * @param {string} key - The key used to compare objects in the arrays.
-	 * @param {boolean} [withDelete=false] - Whether to include deleted items in the result.
-     * @returns {object} An object containing arrays of added, updated, and deleted items.
+     * @returns {Object} An object containing arrays of added, updated, and deleted items.
      */
-	static diff(oldArray, newArray, key, withDelete = false)
+	static diff(oldArray, newArray, key)
 	{
 		const oldItemsMap = this.arrayToMap(oldArray, key);
 		const changes = [];
@@ -66,7 +65,7 @@ export class DataHelper
 		});
 
 		// Remaining items in oldItemsMap are deleted
-		withDelete && oldItemsMap.forEach(({ item: oldItem }) =>
+		oldItemsMap.forEach(({ item: oldItem }) =>
 		{
 			deletedItems.push(oldItem);
 		});
@@ -99,8 +98,8 @@ export class DataHelper
 	/**
 	 * Performs a deep comparison between two objects.
 	 *
-	 * @param {object} obj1 - The first object to compare.
-	 * @param {object} obj2 - The second object to compare.
+	 * @param {Object} obj1 - The first object to compare.
+	 * @param {Object} obj2 - The second object to compare.
 	 * @returns {boolean} True if objects are equal, else false.
 	 * @private
 	 */
@@ -120,6 +119,8 @@ export class DataHelper
 
 		const keys1 = Object.keys(obj1);
 		const keys2 = Object.keys(obj2);
+
+		// Different number of properties
 		if (keys1.length !== keys2.length)
 		{
 			return false
