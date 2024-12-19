@@ -218,6 +218,25 @@ export const List = Jot(
     },
 
     /**
+     * This will reset the list.
+     *
+     * @public
+     * @returns {void}
+     */
+    reset()
+    {
+        // @ts-ignore
+        this.data.set('items', []);
+
+        // @ts-ignore
+        if (this.rowDivider)
+        {
+            // @ts-ignore
+            this.rowDivider.reset();
+        }
+    },
+
+    /**
      * This will append items to the list.
      *
      * @public
