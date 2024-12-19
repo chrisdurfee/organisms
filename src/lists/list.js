@@ -25,6 +25,21 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
 export const List = Jot(
 {
     /**
+     * This will check to set upt he row divider.
+     *
+     * @returns {void}
+     */
+    onCreated()
+    {
+        // @ts-ignore
+        if (this.divider)
+        {
+            // @ts-ignore
+            this.rowDivider = new RowDivider({ ...this.divider, parent: this });
+        }
+    },
+
+    /**
      * This will set the default data.
      *
      * @returns {object}
@@ -59,7 +74,7 @@ export const List = Jot(
      * @param {*} item
      * @returns {object|null}
      */
-    row(item)
+    row(item, index, scope, ele)
     {
         // @ts-ignore
         if (typeof this.rowItem !== 'function')
@@ -68,7 +83,29 @@ export const List = Jot(
         }
 
         // @ts-ignore
+        if (this.rowDivider)
+        {
+            // @ts-ignore
+            this.rowDivider.append(item);
+        }
+
+        // @ts-ignore
         return this.rowItem(item);
+    },
+
+    /**
+     * This will run after the setup.
+     *
+     * @returns {void}
+     */
+    afterSetup()
+    {
+        // @ts-ignore
+        if (this.rowDivider)
+        {
+            // @ts-ignore
+            this.rowDivider.addContainer(this.panel);
+        }
     },
 
     /**
