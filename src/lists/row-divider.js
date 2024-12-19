@@ -14,15 +14,13 @@ export class RowDivider
      *
      * @param {object} options
      * @param {object} options.parent
-     * @param {object} options.container
      * @param {function} options.layout
      * @param {string} options.itemProperty
      * @param {function} [options.customCompare]
      */
-    constructor({ container, parent, layout, itemProperty, customCompare })
+    constructor({ parent, layout, itemProperty, customCompare })
     {
         this.parent = parent;
-        this.container = container;
         this.layout = layout;
         this.itemProperty = itemProperty
         this.customCompare = customCompare;

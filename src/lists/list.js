@@ -65,6 +65,15 @@ export const List = Jot(
         return Div({
             // @ts-ignore
             class: `list ${this.class || ''}`,
+            onCreated: (ele) =>
+            {
+                // @ts-ignore
+                if (this.rowDivider)
+                {
+                    // @ts-ignore
+                    this.rowDivider.addContainer(ele);
+                }
+            },
             for: ['items', rowCallBack]
         });
     },
@@ -92,21 +101,6 @@ export const List = Jot(
 
         // @ts-ignore
         return this.rowItem(item);
-    },
-
-    /**
-     * This will run after the setup.
-     *
-     * @returns {void}
-     */
-    afterSetup()
-    {
-        // @ts-ignore
-        if (this.rowDivider)
-        {
-            // @ts-ignore
-            this.rowDivider.addContainer(this.panel);
-        }
     },
 
     /**
