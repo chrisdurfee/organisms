@@ -2,6 +2,7 @@ import { Div } from '@base-framework/atoms';
 import { Data, Jot } from '@base-framework/base';
 import { ChildHelper } from 'src/utils/child-helper.js';
 import { DataHelper } from 'src/utils/data-helper.js';
+import { RowDivider } from './row-divider.js';
 
 /**
  * This will clone the data.
