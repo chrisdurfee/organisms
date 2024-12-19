@@ -150,7 +150,12 @@ export class RowDivider
      */
     addDivider(value)
     {
+        if (!this.layout)
+        {
+            return;
+        }
+
         const layout = this.layout(value);
-        Builder.build(layout, this.container, parent);
+        Builder.build(layout, this.container, this.parent);
     }
 }
