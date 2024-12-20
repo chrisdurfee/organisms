@@ -1,4 +1,3 @@
-import { Builder } from "@base-framework/base";
 
 /**
  * RowDivider
@@ -13,31 +12,18 @@ export class RowDivider
      * This will create a row divider.
      *
      * @param {object} options
-     * @param {object} options.parent
      * @param {function} options.layout
      * @param {string} options.itemProperty
      * @param {function} [options.customCompare]
      */
-    constructor({ parent, layout, itemProperty, customCompare })
+    constructor({ layout, itemProperty, customCompare })
     {
-        this.parent = parent;
         this.layout = layout;
         this.itemProperty = itemProperty
         this.customCompare = customCompare;
 
         this.lastAppend = null;
         this.lastPrepend = null;
-    }
-
-    /**
-     * This will add a container.
-     *
-     * @param {object} container
-     * @returns {void}
-     */
-    addContainer(container)
-    {
-        this.container = container;
     }
 
     /**
@@ -72,20 +58,21 @@ export class RowDivider
      * This will append a value.
      *
      * @param {object} item
+     * @param {Array<object>} children
      * @returns {void}
      */
-    append(item)
+    append(item, children)
     {
         const value = this.getValue(item);
         const first = this.setFirstValues(value);
         if (first)
         {
-            this.addDivider(value);
+            this.addDivider(value, children);
         }
 
         if (this.compare(this.lastAppend, value))
         {
-            this.addDivider(value);
+            this.addDivider(value, children);
             this.lastAppend = value;
         }
     }
@@ -105,20 +92,21 @@ export class RowDivider
      * This will prepend a value.
      *
      * @param {object} item
+     * @param {Array<object>} children
      * @returns {void}
      */
-    prepend(item)
+    prepend(item, children)
     {
         const value = this.getValue(item);
         const first = this.setFirstValues(value);
         if (first)
         {
-            this.addDivider(value);
+            this.addDivider(value, children);
         }
 
         if (this.compare(this.lastPrepend, value))
         {
-            this.addDivider(value);
+            this.addDivider(value, children);
             this.lastPrepend = value;
         }
     }
@@ -146,14 +134,14 @@ export class RowDivider
      * @param {*} value
      * @returns {void}
      */
-    addDivider(value)
+    addDivider(value, children)
     {
-        if (!this.layout)
+        if (!this.layout || !children)
         {
             return;
         }
 
         const layout = this.layout(value);
-        Builder.build(layout, this.container, this.parent);
+        children.push(layout);
     }
 }

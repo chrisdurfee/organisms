@@ -36,7 +36,7 @@ export const List = Jot(
         if (this.divider)
         {
             // @ts-ignore
-            this.rowDivider = new RowDivider({ ...this.divider, parent: this });
+            this.rowDivider = new RowDivider({ ...this.divider });
         }
     },
 
@@ -84,7 +84,7 @@ export const List = Jot(
      * @param {*} item
      * @returns {object|null}
      */
-    row(item, index, scope, ele)
+    row(item, index, scope, children)
     {
         // @ts-ignore
         if (typeof this.rowItem !== 'function')
@@ -96,7 +96,7 @@ export const List = Jot(
         if (this.rowDivider)
         {
             // @ts-ignore
-            this.rowDivider.append(item);
+            this.rowDivider.append(item, children);
         }
 
         // @ts-ignore
