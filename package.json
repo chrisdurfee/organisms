@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.0.53",
+	"version": "1.0.55",
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
@@ -38,5 +38,12 @@
 		"readme.md",
 		"dist"
 	],
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"import": "./dist/organisms.js",
+			"require": "./dist/organisms.js"
+		}
+	},
 	"homepage": "https://github.com/chrisdurfee/organisms#readme"
 }
