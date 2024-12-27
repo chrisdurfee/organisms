@@ -21,7 +21,7 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  * @property {string} key - The key to use to identify the items
  * @property {array} [items] - The items
  *
- * @class
+ * @returns {Constructor}
  */
 export const List = Jot(
 {
