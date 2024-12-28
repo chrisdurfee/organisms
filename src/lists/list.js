@@ -17,6 +17,7 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  *
  * This will create a list component.
  *
+ * @param {object} props
  * @property {string} class - The class to add to the list
  * @property {string} key - The key to use to identify the items
  * @property {array} [items] - The items
