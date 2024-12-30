@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.0.61",
+	"version": "1.0.62",
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
@@ -34,7 +34,7 @@
 	},
 	"types": "dist/types/organisms.d.ts",
 	"files": [
-		"pacakge.json",
+		"package.json",
 		"readme.md",
 		"dist"
 	],
