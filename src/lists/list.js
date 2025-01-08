@@ -246,6 +246,13 @@ export const List = Jot(
         let lastIndex = this.data.items.length - 1;
         items.forEach((item) =>
         {
+            // @ts-ignore
+            if (this.rowDivider)
+            {
+                // @ts-ignore
+                this.rowDivider.append(item, rows);
+            }
+
             /**
              * This will build the new rows that will be appended.
              */
@@ -329,6 +336,13 @@ export const List = Jot(
         const reverseItems = items.reverse();
         reverseItems.forEach((item) =>
         {
+            // @ts-ignore
+            if (this.rowDivider)
+            {
+                // @ts-ignore
+                this.rowDivider.prepend(item, rows);
+            }
+
             /**
              * This will build the new rows that will be appended.
              */

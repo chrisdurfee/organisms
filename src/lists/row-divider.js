@@ -49,7 +49,7 @@ export class RowDivider
         if (!last)
         {
             this.lastAppend = value;
-            this.lastPrepend = value;
+            //this.lastPrepend = value;
         }
         return (!last);
     }
@@ -106,7 +106,7 @@ export class RowDivider
 
         if (this.compare(this.lastPrepend, value))
         {
-            this.addDivider(value, children);
+            this.addDivider(this.lastPrepend, children);
             this.lastPrepend = value;
         }
     }
