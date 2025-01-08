@@ -85,7 +85,7 @@ export const List = Jot(
         }
 
         // @ts-ignore
-        if (this.rowDivider)
+        if (this.rowDivider && children)
         {
             // @ts-ignore
             this.rowDivider.append(item, children);
