@@ -1,5 +1,5 @@
 import { Div } from '@base-framework/atoms';
-import { Data, Jot } from '@base-framework/base';
+import { Component, Data, Jot } from '@base-framework/base';
 import { ChildHelper } from 'src/utils/child-helper.js';
 import { DataHelper } from 'src/utils/data-helper.js';
 import { RowDivider } from './row-divider.js';
@@ -22,7 +22,7 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  * @property {string} key - The key to use to identify the items
  * @property {array} [items] - The items
  *
- * @returns {ComponentConstructor}
+ * @type {typeof Component}
  */
 export const List = Jot(
 {
