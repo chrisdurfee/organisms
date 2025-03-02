@@ -6,6 +6,6 @@ import { IntervalTimer } from './utils/timer/interval-timer.js';
 import { Timer } from './utils/timer/timer.js';
 
 export {
-    DynamicTime, IntervalTimer, List, NavLink, TableBody, Timer
+	DynamicTime, IntervalTimer, List, NavLink, TableBody, Timer
 };
 

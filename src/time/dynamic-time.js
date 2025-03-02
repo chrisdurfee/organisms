@@ -13,7 +13,7 @@ import { IntervalTimer } from "src/utils/timer/interval-timer.js";
  * @type {SimpleData} data
  */
 const data = new SimpleData({
-    date: 0
+	date: 0
 });
 
 /**
@@ -30,7 +30,7 @@ const MINUTE_INTERVAL = 60000;
  */
 const timer = new IntervalTimer(MINUTE_INTERVAL, () =>
 {
-    data.increment('date');
+	data.increment('date');
 });
 
 /**
@@ -53,42 +53,42 @@ timer.start();
  */
 export class DynamicTime extends Component
 {
-    /**
-     * This will set up the component data with the
-     * data created above.
-     *
-     * @returns {object}
-     */
-    setData()
-    {
-        return data;
-    }
+	/**
+	 * This will set up the component data with the
+	 * data created above.
+	 *
+	 * @returns {object}
+	 */
+	setData()
+	{
+		return data;
+	}
 
-    /**
-     * This will render the component.
-     *
-     * @returns {object}
-     */
-    render()
-    {
-        return Span({
-            // @ts-ignore
-            class: this.class,
-            text: this.getTime(),
-            onSet: ['date', () => this.getTime()]
-        });
-    }
+	/**
+	 * This will render the component.
+	 *
+	 * @returns {object}
+	 */
+	render()
+	{
+		return Span({
+			// @ts-ignore
+			class: this.class,
+			text: this.getTime(),
+			onSet: ['date', () => this.getTime()]
+		});
+	}
 
-    /**
-     * This will get the date and check to filter the value.
-     *
-     * @returns {string}
-     */
-    getTime()
-    {
-        // @ts-ignore
-        const dateTime = this.dateTime;
-        // @ts-ignore
-        return (this.filter) ? this.filter(dateTime) : dateTime;
-    }
+	/**
+	 * This will get the date and check to filter the value.
+	 *
+	 * @returns {string}
+	 */
+	getTime()
+	{
+		// @ts-ignore
+		const dateTime = this.dateTime;
+		// @ts-ignore
+		return (this.filter) ? this.filter(dateTime) : dateTime;
+	}
 }

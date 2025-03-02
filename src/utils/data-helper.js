@@ -25,13 +25,13 @@ const Item = (index, item, status) =>
 export class DataHelper
 {
 	/**
-     * Compares two arrays of objects and returns the differences based on a specified key.
-     *
-     * @param {Array<Object>} oldArray - The original array of objects.
-     * @param {Array<Object>} newArray - The updated array of objects.
-     * @param {string} key - The key used to compare objects in the arrays.
-     * @returns {Object} An object containing arrays of added, updated, and deleted items.
-     */
+	 * Compares two arrays of objects and returns the differences based on a specified key.
+	 *
+	 * @param {Array<Object>} oldArray - The original array of objects.
+	 * @param {Array<Object>} newArray - The updated array of objects.
+	 * @param {string} key - The key used to compare objects in the arrays.
+	 * @returns {Object} An object containing arrays of added, updated, and deleted items.
+	 */
 	static diff(oldArray, newArray, key)
 	{
 		const oldItemsMap = this.arrayToMap(oldArray, key);
@@ -78,7 +78,7 @@ export class DataHelper
 
 	/**
 	 * Converts an array of objects into a Map keyed by the specified property.
-     * Each value in the Map is an object containing the item and its index in the array.
+	 * Each value in the Map is an object containing the item and its index in the array.
 	 *
 	 * @param {Array<Object>} array - The array to convert.
 	 * @param {string} key - The key used to map the objects.

@@ -17,20 +17,20 @@ import { List } from '../lists/list.js';
 // @ts-ignore
 export class TableBody extends List
 {
-    /**
-     * This will render the list.
-     *
-     * @returns {object}
-     */
-    render()
-    {
-        // @ts-ignore
-        const rowCallBack = this.row.bind(this);
+	/**
+	 * This will render the list.
+	 *
+	 * @returns {object}
+	 */
+	render()
+	{
+		// @ts-ignore
+		const rowCallBack = this.row.bind(this);
 
-        return Tbody({
-            // @ts-ignore
-            class: `tbody ${this.class || ''}`,
-            for: ['items', rowCallBack]
-        });
-    }
+		return Tbody({
+			// @ts-ignore
+			class: `tbody ${this.class || ''}`,
+			for: ['items', rowCallBack]
+		});
+	}
 };

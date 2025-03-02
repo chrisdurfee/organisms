@@ -10,74 +10,74 @@
  */
 export class Timer
 {
-    /**
-     * This will create a new timer.
-     *
-     * @param {number} duration
-     * @param {function} callBack
-     */
+	/**
+	 * This will create a new timer.
+	 *
+	 * @param {number} duration
+	 * @param {function} callBack
+	 */
 	constructor(duration, callBack)
 	{
-        /**
-         * @property {number|null} timer
-         */
+		/**
+		 * @property {number|null} timer
+		 */
 		this.timer = null;
 
-        /**
-         * @property {function} callBack
-         */
+		/**
+		 * @property {function} callBack
+		 */
 		this.callBack = callBack;
 
-        /**
-         * @property {number} duration
-         */
+		/**
+		 * @property {number} duration
+		 */
 		this.duration = duration || 1000;
 	}
 
-    /**
-     * This will create a timer.
-     *
-     * @protected
-     * @param {function} callBack
-     * @returns {void}
-     */
+	/**
+	 * This will create a timer.
+	 *
+	 * @protected
+	 * @param {function} callBack
+	 * @returns {void}
+	 */
 	createTimer(callBack)
 	{
 		this.timer = window.setTimeout(callBack, this.duration);
 	}
 
-    /**
-     * This will start the timer.
-     *
-     * @returns {void}
-     */
+	/**
+	 * This will start the timer.
+	 *
+	 * @returns {void}
+	 */
 	start()
 	{
-        /**
-         * This will stop the timer before starting a new one.
-         */
+		/**
+		 * This will stop the timer before starting a new one.
+		 */
 		this.stop();
 
 		const callBack = this.returnCallBack.bind(this);
 		this.createTimer(callBack);
 	}
 
-    /**
-     * This will stop the timer.
-     *
-     * @returns {void}
-     */
+	/**
+	 * This will stop the timer.
+	 *
+	 * @returns {void}
+	 */
 	stop()
 	{
 		window.clearTimeout(this.timer);
 	}
 
-    /**
-     * This will call the callback function.
-     *
-     * @private
-     * @returns {void}
-     */
+	/**
+	 * This will call the callback function.
+	 *
+	 * @private
+	 * @returns {void}
+	 */
 	returnCallBack()
 	{
 		const callBack = this.callBack;

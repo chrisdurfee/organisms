@@ -9,23 +9,23 @@ import { Timer } from './timer.js';
  */
 export class IntervalTimer extends Timer
 {
-    /**
-     * This will create a timer.
-     *
-     * @protected
-     * @param {function} callBack
-     * @returns {void}
-     */
+	/**
+	 * This will create a timer.
+	 *
+	 * @protected
+	 * @param {function} callBack
+	 * @returns {void}
+	 */
 	createTimer(callBack)
 	{
 		this.timer = window.setInterval(callBack, this.duration);
 	}
 
-    /**
-     * This will stop the timer.
-     *
-     * @returns {void}
-     */
+	/**
+	 * This will stop the timer.
+	 *
+	 * @returns {void}
+	 */
 	stop()
 	{
 		window.clearInterval(this.timer);
