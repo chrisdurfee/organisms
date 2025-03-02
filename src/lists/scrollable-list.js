@@ -53,6 +53,12 @@ const canLoad = (metrics, tracker) =>
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
+ * @property {string} [props.class] - The class to add to the list.
+ * @property {string} [props.key] - The key to use to identify the items.
+ * @property {array} [props.items] - The initial items.
+ * @property {object} [props.divider] - The row divider.
+ * @property {function} [props.rowItem] - The row item.
+ * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @returns {object}
  */
 const ScrollableList = Atom((props) =>
@@ -86,6 +92,7 @@ const ScrollableList = Atom((props) =>
 
 	return Div(
 		{
+			class: props.containerClass ?? '',
 			addEvent: ['scroll', container, handleScroll, { passive: true }],
 		},
 		[
