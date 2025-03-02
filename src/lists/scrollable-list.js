@@ -3,6 +3,9 @@ import { Atom } from "@base-framework/base";
 import { List } from "./list.js";
 import { PaginationTracker } from "./pagination-tracker.js";
 
+// Module-level constant for scroll threshold.
+const SCROLL_THRESHOLD = 100;
+
 /**
  * Get scroll metrics for a container.
  *
@@ -24,10 +27,10 @@ function getScrollMetrics(container)
  * Check if the scroll position indicates we should load more items.
  *
  * @param {object} metrics - The scroll metrics.
- * @param {number} [threshold=100] - The threshold in pixels.
+ * @param {number} [threshold=SCROLL_THRESHOLD] - The threshold in pixels.
  * @returns {boolean}
  */
-function shouldLoadMore(metrics, threshold = 100)
+function shouldLoadMore(metrics, threshold = SCROLL_THRESHOLD)
 {
 	return metrics.scrollTop + metrics.clientHeight >= metrics.scrollHeight - threshold;
 }
@@ -41,8 +44,7 @@ function shouldLoadMore(metrics, threshold = 100)
  */
 const canLoad = (metrics, tracker) =>
 {
-	const MAX = 100;
-	return shouldLoadMore(metrics, MAX) && tracker.canLoadMore();
+	return shouldLoadMore(metrics) && tracker.canLoadMore();
 };
 
 /**
@@ -66,10 +68,13 @@ const ScrollableList = Atom((props) =>
 	// Create a pagination tracker instance.
 	const tracker = new PaginationTracker(props.offset, props.limit);
 
+	// Determine the container for scroll events (defaults to window).
+	const container = props.scrollContainer || window;
+
 	// Scroll event handler.
 	const handleScroll = (e, { list }) =>
 	{
-		const metrics = getScrollMetrics(e.target);
+		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
 			props.loadMoreItems(tracker.currentOffset, tracker.limit, (rows) =>
@@ -86,9 +91,6 @@ const ScrollableList = Atom((props) =>
 			});
 		}
 	};
-
-	// Determine the container for scroll events (defaults to window).
-	const container = props.scrollContainer || window;
 
 	return Div(
 		{
