@@ -1,9 +1,9 @@
-import { Atom } from "@base-framework/base";
-import { List } from "./list.js";
-import ScrollableContainer from "./scrollable-container.js";
+import { Atom } from '@base-framework/base';
+import ScrollableContainer from '../lists/scrollable-container.js';
+import { TableBody } from './table-body.js';
 
 /**
- * A ScrollableList component that updates when its container is scrolled.
+ * A ScrollableTableBody component that updates when its container is scrolled.
  *
  * @param {object} props
  * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to window.
@@ -18,7 +18,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @returns {object}
  */
-const ScrollableList = Atom((props) => (
+const ScrollableTableBody = Atom((props) => (
 	ScrollableContainer(
 		{
 			scrollContainer: props.scrollContainer,
@@ -28,7 +28,7 @@ const ScrollableList = Atom((props) => (
 			containerClass: props.containerClass ?? ''
 		},
 		[
-			new List({
+			new TableBody({
 				cache: 'list',
 				key: props.key,
 				items: props.items || [],
@@ -41,4 +41,4 @@ const ScrollableList = Atom((props) => (
 	)
 ));
 
-export default ScrollableList;
+export default ScrollableTableBody;
