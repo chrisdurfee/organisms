@@ -18,7 +18,7 @@ import { TableBody } from './table-body.js';
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @returns {object}
  */
-const ScrollableTableBody = Atom((props) => (
+export const ScrollableTableBody = Atom((props) => (
 	ScrollableContainer(
 		{
 			scrollContainer: props.scrollContainer,

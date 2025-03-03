@@ -18,7 +18,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @returns {object}
  */
-const ScrollableList = Atom((props) => (
+export const ScrollableList = Atom((props) => (
 	ScrollableContainer(
 		{
 			scrollContainer: props.scrollContainer,
