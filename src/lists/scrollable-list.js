@@ -15,6 +15,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {array} [props.items] - The initial items.
  * @property {object} [props.divider] - The row divider.
  * @property {function} [props.rowItem] - The row item.
+ * @property {object} [props.data] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @returns {object}
  */
@@ -25,7 +26,8 @@ export const ScrollableList = Atom((props) => (
 			loadMoreItems: props.loadMoreItems,
 			offset: props.offset,
 			limit: props.limit,
-			containerClass: props.containerClass ?? ''
+			containerClass: props.containerClass ?? '',
+			data: props.data
 		},
 		[
 			new List({
