@@ -1,4 +1,3 @@
-import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
 
@@ -70,61 +69,35 @@ const updateRows = (rows, tracker, list) =>
  * A ScrollableList component that updates when its container is scrolled.
  *
  * @param {object} props
- * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to window.
- * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
- * @property {number} [props.offset] - The initial offset. Defaults to 0.
- * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
- * @property {string} [props.containerClass] - The class to add to the scroll container.
+ * @property {Data} [props.data] - The data to use for the list.
  * @param {array} children - The child elements to render.
- * @returns {object}
+ * @returns {array}
  */
-export const ScrollableContainer = Atom((props, children) =>
+export const DataContainer = Atom((props, children) =>
 {
-	const tracker = new PaginationTracker(props.offset, props.limit);
-	const container = props.scrollContainer || window;
-
 	/**
 	 * This will handle the scroll event.
 	 *
-	 * @param {object|null} e
-	 * @param {object} parent
+	 * @param {number} offset - The offset to start loading from.
+     * @param {number} limit - The number of items to load.
+     * @param {function} callBack - The callback to call with the loaded items.
 	 * @returns {void}
 	 */
-	const handleScroll = (e, { list }) =>
+	const fetchData = (offset, limit, callBack) =>
 	{
-		const metrics = getScrollMetrics(container);
-		if (canLoad(metrics, tracker))
+		props.data.xhr.all('', (response) =>
 		{
-			props.loadMoreItems(tracker.currentOffset, tracker.limit, (rows) =>
-			{
-				updateRows(rows, tracker, list);
-			});
-		}
+			if (!response || response.success === false)
+            {
+                return;
+            }
+
+            const rows = response.rows || response.items || [];
+            callBack(rows);
+		});
 	};
 
-	return Div(
-		{
-			class: props.containerClass ?? '',
-
-			/**
-			 * This will request to update the list when the atom is created.
-			 *
-			 * @param {object} ele
-			 * @param {object} parent
-			 * @returns {void}
-			 */
-			onCreated(ele, { list })
-			{
-				handleScroll(null, { list });
-			},
-
-			/**
-			 * This will add the scroll event to the container.
-			 */
-			addEvent: ['scroll', container, handleScroll, { passive: true }],
-		},
-		children
-	);
+	return children;
 });
 
-export default ScrollableContainer;
+export default DataContainer;
