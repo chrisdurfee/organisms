@@ -83,6 +83,13 @@ const ScrollableContainer = Atom((props, children) =>
 	const tracker = new PaginationTracker(props.offset, props.limit);
 	const container = props.scrollContainer || window;
 
+	/**
+	 * This will handle the scroll event.
+	 *
+	 * @param {object|null} e
+	 * @param {object} parent
+	 * @returns {void}
+	 */
 	const handleScroll = (e, { list }) =>
 	{
 		const metrics = getScrollMetrics(container);
@@ -98,6 +105,22 @@ const ScrollableContainer = Atom((props, children) =>
 	return Div(
 		{
 			class: props.containerClass ?? '',
+
+			/**
+			 * This will request to update the list when the atom is created.
+			 *
+			 * @param {object} ele
+			 * @param {object} parent
+			 * @returns {void}
+			 */
+			onCreated(ele, { list })
+			{
+				handleScroll(null, { list });
+			},
+
+			/**
+			 * This will add the scroll event to the container.
+			 */
 			addEvent: ['scroll', container, handleScroll, { passive: true }],
 		},
 		children
