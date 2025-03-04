@@ -47,6 +47,26 @@ const canLoad = (metrics, tracker) =>
 };
 
 /**
+ * Update the rows in the list and the tracker state.
+ *
+ * @param {Array} rows
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ */
+const updateRows = (rows, tracker, list) =>
+{
+	if (rows && rows.length > 0)
+	{
+		list.append(rows);
+		tracker.update(rows.length);
+	}
+	else
+	{
+		tracker.hasMoreData = false;
+	}
+};
+
+/**
  * A ScrollableList component that updates when its container is scrolled.
  *
  * @param {object} props
@@ -60,13 +80,9 @@ const canLoad = (metrics, tracker) =>
  */
 const ScrollableContainer = Atom((props, children) =>
 {
-	// Create a pagination tracker instance.
 	const tracker = new PaginationTracker(props.offset, props.limit);
-
-	// Determine the container for scroll events (defaults to window).
 	const container = props.scrollContainer || window;
 
-	// Scroll event handler.
 	const handleScroll = (e, { list }) =>
 	{
 		const metrics = getScrollMetrics(container);
@@ -74,15 +90,7 @@ const ScrollableContainer = Atom((props, children) =>
 		{
 			props.loadMoreItems(tracker.currentOffset, tracker.limit, (rows) =>
 			{
-				if (rows && rows.length > 0)
-				{
-					list.append(rows);
-					tracker.update(rows.length);
-				}
-				else
-				{
-					tracker.hasMoreData = false;
-				}
+				updateRows(rows, tracker, list);
 			});
 		}
 	};
