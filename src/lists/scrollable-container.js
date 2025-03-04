@@ -74,13 +74,13 @@ const updateRows = (rows, tracker, list) =>
  */
 const setupFetchCallback = (data) =>
 {
-	return (offset, limit, callBack) =>
+	return (offset, limit, callback) =>
 	{
 		data.xhr.all('', (response) =>
 		{
 			const rows = response.rows || response.items || [];
-			callBack(rows);
-		});
+			callback(rows);
+		}, offset, limit);
 	};
 };
 
