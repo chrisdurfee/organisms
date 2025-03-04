@@ -1,5 +1,4 @@
 import { Tbody } from '@base-framework/atoms';
-import { Component } from '@base-framework/base';
 import { List } from '../lists/list.js';
 
 /**
@@ -12,7 +11,8 @@ import { List } from '../lists/list.js';
  * @property {string} key - The key to use to identify the items
  * @property {array} [items] - The items
  *
- * @type {typeof Component}
+ * @class TableBody
+ * @extends List
  */
 // @ts-ignore
 export class TableBody extends List

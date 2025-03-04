@@ -1,5 +1,6 @@
-import { Atom } from '@base-framework/base';
-import ScrollableContainer from '../lists/scrollable-container.js';
+import { Tbody } from '@base-framework/atoms';
+import { PaginationTracker } from '../lists/pagination-tracker.js';
+import { createScrollHandler, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -13,34 +14,65 @@ import { TableBody } from './table-body.js';
  * @property {string} [props.class] - The class to add to the list.
  * @property {string} [props.key] - The key to use to identify the items.
  * @property {array} [props.items] - The initial items.
- * @property {object} [props.divider] - The row divider.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
- * @returns {object}
+ *
+ * @class ScrollableTableBody
+ * @extends TableBody
  */
-export const ScrollableTableBody = Atom((props) => (
-	ScrollableContainer(
-		{
-			scrollContainer: props.scrollContainer,
-			loadMoreItems: props.loadMoreItems,
-			offset: props.offset,
-			limit: props.limit,
-			containerClass: props.containerClass ?? '',
-			data: props.data
-		},
-		[
-			new TableBody({
-				cache: 'list',
-				key: props.key,
-				items: props.items || [],
-				divider: props.divider,
-				role: 'list',
-				class: props.class,
-				rowItem: props.rowItem
-			})
-		]
-	)
-));
+export class ScrollableTableBody extends TableBody
+{
+	/**
+	 * This will render the list.
+	 *
+	 * @returns {object}
+	 */
+	render()
+	{
+		// @ts-ignore
+		const rowCallBack = this.row.bind(this);
+
+		// @ts-ignore
+		const tracker = new PaginationTracker(this.offset, this.limit);
+		// @ts-ignore
+		const container = this.scrollContainer || window;
+		// @ts-ignore
+		const fetchCallback = this.loadMoreItems || setupFetchCallback(this.data);
+
+		/**
+		 * This will handle the scroll event.
+		 *
+		 * @param {object|null} e
+		 * @param {object} parent
+		 * @returns {void}
+		 */
+		const handleScroll = createScrollHandler(container, tracker, fetchCallback);
+
+		return Tbody({
+			// @ts-ignore
+			class: `tbody ${this.class || ''}`,
+
+			/**
+			 * This will request to update the list when the atom is created.
+			 *
+			 * @param {object} ele
+			 * @param {object} parent
+			 * @returns {void}
+			 */
+			onCreated(ele, { list })
+			{
+				handleScroll(null, { list });
+			},
+
+			/**
+			 * This will add the scroll event to the container.
+			 */
+			addEvent: ['scroll', container, handleScroll, { passive: true }],
+
+			for: ['items', rowCallBack]
+		});
+	}
+};
 
 export default ScrollableTableBody;
