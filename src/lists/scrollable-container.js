@@ -67,11 +67,30 @@ const updateRows = (rows, tracker, list) =>
 };
 
 /**
+ * Set up a fetch callback for loading data.
+ *
+ * @param {object} data
+ * @returns {function}
+ */
+const setupFetchCallback = (data) =>
+{
+	return (offset, limit, callBack) =>
+	{
+		data.xhr.all('', (response) =>
+		{
+			const rows = response.rows || response.items || [];
+			callBack(rows);
+		});
+	};
+};
+
+/**
  * A ScrollableList component that updates when its container is scrolled.
  *
  * @param {object} props
  * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to window.
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
+ * @property {object} [props.data] - The data object containing the xhr method.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
@@ -82,6 +101,7 @@ export const ScrollableContainer = Atom((props, children) =>
 {
 	const tracker = new PaginationTracker(props.offset, props.limit);
 	const container = props.scrollContainer || window;
+	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
 
 	/**
 	 * This will handle the scroll event.
@@ -95,7 +115,7 @@ export const ScrollableContainer = Atom((props, children) =>
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
-			props.loadMoreItems(tracker.currentOffset, tracker.limit, (rows) =>
+			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
 				updateRows(rows, tracker, list);
 			});
