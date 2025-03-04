@@ -78,7 +78,13 @@ const setupFetchCallback = (data) =>
 	{
 		data.xhr.all('', (response) =>
 		{
-			const rows = response.rows || response.items || [];
+			let rows = [];
+
+			if (response)
+			{
+				rows = response.rows || response.items || [];
+			}
+
 			callback(rows);
 		}, offset, limit);
 	};
