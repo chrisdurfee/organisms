@@ -17,6 +17,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
+ * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
  */
 export const ScrollableList = Atom((props) => (
@@ -31,7 +32,7 @@ export const ScrollableList = Atom((props) => (
 		},
 		[
 			new List({
-				cache: 'list',
+				cache: props.cache ?? 'list',
 				key: props.key,
 				items: props.items || [],
 				divider: props.divider,
