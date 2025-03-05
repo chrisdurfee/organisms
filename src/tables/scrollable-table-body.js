@@ -1,6 +1,6 @@
 import { Tbody } from '@base-framework/atoms';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { createTableScrollHandler, setupFetchCallback } from '../lists/scroll-utils.js';
+import { createTableScrollHandler, fetchAndUpdate, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -24,21 +24,52 @@ import { TableBody } from './table-body.js';
 export class ScrollableTableBody extends TableBody
 {
 	/**
-	 * This will render the list.
+	 * This will declare the component props.
 	 *
-	 * @returns {object}
+	 * @returns {void}
 	 */
-	render()
+	declareProps()
+	{
+		/**
+		 * @member {PaginationTracker}
+		 */
+		this.tracker = null;
+
+		/**
+		 * @member {HTMLElement}
+		 * @default window
+		 */
+		this.scrollContainer = null;
+
+		/**
+		 * @member {function}
+		 */
+		this.fetchCallback = null;
+	}
+
+	/**
+	 * This will set up the page tracker.
+	 *
+	 * @returns {PaginationTracker}
+	 */
+	setupPageTracker()
 	{
 		// @ts-ignore
-		const rowCallBack = this.row.bind(this);
+		return this.tracker = new PaginationTracker(this.offset, this.limit);
+	}
 
+	/**
+	 * This will set up the scroll handler.
+	 *
+	 * @param {HTMLElement} container
+	 * @returns {Function}
+	 */
+	setupScrollHandler(container)
+	{
 		// @ts-ignore
-		const tracker = new PaginationTracker(this.offset, this.limit);
+		const tracker = this.setupPageTracker();
 		// @ts-ignore
-		const container = this.scrollContainer || window;
-		// @ts-ignore
-		const fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData);
+		this.fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData);
 
 		/**
 		 * This will handle the scroll event.
@@ -47,7 +78,40 @@ export class ScrollableTableBody extends TableBody
 		 * @param {object} parent
 		 * @returns {void}
 		 */
-		const handleScroll = createTableScrollHandler(container, tracker, fetchCallback);
+		return createTableScrollHandler(container, tracker, this.fetchCallback);
+	}
+
+	/**
+	 * This will refresh the list.
+	 *
+	 * @returns {void}
+	 */
+	refresh()
+	{
+		this.tracker.reset();
+		fetchAndUpdate(this.fetchCallback, this.tracker, this);
+	}
+
+	/**
+	 * This will render the list.
+	 *
+	 * @returns {object}
+	 */
+	render()
+	{
+		// @ts-ignore
+		const rowCallBack = this.row.bind(this);
+		// @ts-ignore
+		const container = this.scrollContainer || window;
+
+		/**
+		 * This will handle the scroll event.
+		 *
+		 * @param {object|null} e
+		 * @param {object} parent
+		 * @returns {void}
+		 */
+		const handleScroll = this.setupScrollHandler(container);
 
 		return Tbody({
 			// @ts-ignore

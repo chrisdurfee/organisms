@@ -89,6 +89,22 @@ export const setupFetchCallback = (data) =>
 };
 
 /**
+ * Fetch and update rows in the list.
+ *
+ * @param {function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {void}
+ */
+export const fetchAndUpdate = (fetchCallback, tracker, list) =>
+{
+	fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+	{
+		updateRows(rows, tracker, list);
+	});
+};
+
+/**
  * Create a scroll event handler for the container.
  *
  * @param {object} container
@@ -140,10 +156,7 @@ export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
-			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
-			{
-				updateRows(rows, tracker, list);
-			});
+			fetchAndUpdate(fetchCallback, tracker, list);
 		}
 	};
 };

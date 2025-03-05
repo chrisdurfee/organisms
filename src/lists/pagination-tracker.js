@@ -42,6 +42,17 @@ export class PaginationTracker
 		}
 		this.currentOffset += numItems;
 	}
+
+	/**
+	 * Resets the tracker state.
+	 *
+	 * @returns {void}
+	 */
+	reset()
+	{
+		this.currentOffset = 0;
+		this.hasMoreData = true;
+	}
 }
 
 export default PaginationTracker;
