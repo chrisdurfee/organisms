@@ -44,7 +44,6 @@ export const ScrollableContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
-				console.log(parent)
 				handleScroll(null, parent);
 			},
 

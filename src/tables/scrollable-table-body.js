@@ -1,6 +1,6 @@
 import { Tbody } from '@base-framework/atoms';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { createScrollHandler, setupFetchCallback } from '../lists/scroll-utils.js';
+import { createTableScrollHandler, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -47,7 +47,7 @@ export class ScrollableTableBody extends TableBody
 		 * @param {object} parent
 		 * @returns {void}
 		 */
-		const handleScroll = createScrollHandler(container, tracker, fetchCallback);
+		const handleScroll = createTableScrollHandler(container, tracker, fetchCallback);
 
 		return Tbody({
 			// @ts-ignore
@@ -60,9 +60,9 @@ export class ScrollableTableBody extends TableBody
 			 * @param {object} parent
 			 * @returns {void}
 			 */
-			onCreated(ele, { list })
+			onCreated(ele, parent)
 			{
-				handleScroll(null, { list });
+				handleScroll(null, parent);
 			},
 
 			/**

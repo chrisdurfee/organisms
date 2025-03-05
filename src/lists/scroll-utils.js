@@ -105,15 +105,44 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
-	return (e, parent) =>
+	return (e, { list }) =>
 	{
-		console.log(parent)
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
 			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
-				updateRows(rows, tracker, parent.list);
+				updateRows(rows, tracker, list);
+			});
+		}
+	};
+};
+
+/**
+ * Create a table scroll event handler for the container.
+ *
+ * @param {object} container
+ * @param {PaginationTracker} tracker
+ * @param {function} fetchCallback
+ * @returns {function} A scroll event handler function.
+ */
+export const createTableScrollHandler = (container, tracker, fetchCallback) =>
+{
+	/**
+	 * This will handle the scroll event.
+	 *
+	 * @param {object|null} e
+	 * @param {object} list
+	 * @returns {void}
+	 */
+	return (e, list) =>
+	{
+		const metrics = getScrollMetrics(container);
+		if (canLoad(metrics, tracker))
+		{
+			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+			{
+				updateRows(rows, tracker, list);
 			});
 		}
 	};
