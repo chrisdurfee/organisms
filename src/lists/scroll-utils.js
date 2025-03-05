@@ -105,6 +105,24 @@ export const fetchAndUpdate = (fetchCallback, tracker, list) =>
 };
 
 /**
+ * Fetch and refresh the list.
+ *
+ * @param {function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {void}
+ */
+export const fetchAndRefresh = (fetchCallback, tracker, list) =>
+{
+	tracker.reset();
+	fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+	{
+		list.reset();
+		updateRows(rows, tracker, list);
+	});
+};
+
+/**
  * Create a scroll event handler for the container.
  *
  * @param {object} container

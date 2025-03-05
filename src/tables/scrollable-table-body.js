@@ -1,6 +1,6 @@
 import { Tbody } from '@base-framework/atoms';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { createTableScrollHandler, fetchAndUpdate, setupFetchCallback } from '../lists/scroll-utils.js';
+import { createTableScrollHandler, fetchAndRefresh, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -88,8 +88,7 @@ export class ScrollableTableBody extends TableBody
 	 */
 	refresh()
 	{
-		this.tracker.reset();
-		fetchAndUpdate(this.fetchCallback, this.tracker, this);
+		fetchAndRefresh(this.fetchCallback, this.tracker, this);
 	}
 
 	/**

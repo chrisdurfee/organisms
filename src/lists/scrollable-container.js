@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, fetchAndUpdate, setupFetchCallback } from "./scroll-utils.js";
+import { createScrollHandler, fetchAndRefresh, setupFetchCallback } from "./scroll-utils.js";
 
 /**
  * This will reset the tracker and fetch new data.
@@ -15,8 +15,7 @@ const setupResetCallback = (fetchCallback, tracker, list) =>
 {
 	return () =>
 	{
-		tracker.reset();
-		fetchAndUpdate(fetchCallback, tracker, list);
+		fetchAndRefresh(fetchCallback, tracker, list);
 	};
 };
 
