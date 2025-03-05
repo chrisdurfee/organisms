@@ -105,14 +105,15 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
-	return (e, { list }) =>
+	return (e, parent) =>
 	{
+		console.log(parent)
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
 			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
-				updateRows(rows, tracker, list);
+				updateRows(rows, tracker, parent.list);
 			});
 		}
 	};
