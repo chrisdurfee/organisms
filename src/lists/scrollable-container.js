@@ -1,7 +1,36 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, setupFetchCallback } from "./scroll-utils.js";
+import { createScrollHandler, fetchAndUpdate, setupFetchCallback } from "./scroll-utils.js";
+
+/**
+ * This will reset the tracker and fetch new data.
+ *
+ * @param {Function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {Function}
+ */
+const setupResetCallback = (fetchCallback, tracker, list) =>
+{
+	return () =>
+	{
+		tracker.reset();
+		fetchAndUpdate(fetchCallback, tracker, list);
+	};
+};
+
+/**
+ * This will add the refresh method to the list.
+ *
+ * @param {Function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} parent
+ */
+const addRefreshMethod = (fetchCallback, tracker, parent) =>
+{
+	parent.list.refresh = setupResetCallback(fetchCallback, tracker, parent.list);
+};
 
 /**
  * A ScrollableList component that updates when its container is scrolled.
@@ -44,6 +73,14 @@ export const ScrollableContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
+				/**
+				 * This will add the refresh method to the list.
+				 */
+				addRefreshMethod(fetchCallback, tracker, parent);
+
+				/**
+				 * This will request the first fetch.
+				 */
 				handleScroll(null, parent);
 			},
 
