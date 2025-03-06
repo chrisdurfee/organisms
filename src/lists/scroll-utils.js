@@ -1,7 +1,7 @@
 import { PaginationTracker } from "./pagination-tracker.js";
 
-// Module-level constant for scroll threshold.
-const SCROLL_THRESHOLD = 100;
+// Module-level constant for scroll threshold (in pixels)
+const SCROLL_THRESHOLD = 50;
 
 /**
  * Get scroll metrics for a container.
@@ -45,7 +45,7 @@ export const canLoad = (metrics, tracker) =>
 };
 
 /**
- * Update the rows in the list and the tracker state.
+ * Update the rows in the list and update the tracker state.
  *
  * @param {Array} rows
  * @param {PaginationTracker} tracker
@@ -74,17 +74,23 @@ export const setupFetchCallback = (data) =>
 {
 	return (offset, limit, callback) =>
 	{
-		data.xhr.all('', (response) =>
+		/**
+		 * This will handle the result of the fetch.
+		 *
+		 * @param {object|null} response
+		 * @returns {void}
+		 */
+		const resultCallback = (response) =>
 		{
 			let rows = [];
-
 			if (response)
 			{
 				rows = response.rows || response.items || [];
 			}
-
 			callback(rows);
-		}, offset, limit);
+		};
+
+		data.xhr.all('', resultCallback, offset, limit);
 	};
 };
 
@@ -125,28 +131,32 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 /**
  * Create a scroll event handler for the container.
  *
- * @param {object} container
- * @param {PaginationTracker} tracker
- * @param {function} fetchCallback
+ * This handler ensures that loading is triggered only when the user is close
+ * to the bottom of the container and prevents multiple concurrent loads.
+ *
+ * @param {object} container - The scrollable container.
+ * @param {PaginationTracker} tracker - The pagination tracker.
+ * @param {function} fetchCallback - Function to fetch data.
  * @returns {function} A scroll event handler function.
  */
 export const createScrollHandler = (container, tracker, fetchCallback) =>
 {
-	/**
-	 * This will handle the scroll event.
-	 *
-	 * @param {object|null} e
-	 * @param {object} parent
-	 * @returns {void}
-	 */
 	return (e, { list }) =>
 	{
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
+			// Prevent multiple concurrent loads
+			if (tracker.loading)
+			{
+				return;
+			}
+
+			tracker.loading = true;
 			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
 				updateRows(rows, tracker, list);
+				tracker.loading = false;
 			});
 		}
 	};
@@ -155,26 +165,33 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 /**
  * Create a table scroll event handler for the container.
  *
- * @param {object} container
- * @param {PaginationTracker} tracker
- * @param {function} fetchCallback
+ * This handler ensures that loading is triggered only when the user is close
+ * to the bottom of the container and prevents multiple concurrent loads.
+ *
+ * @param {object} container - The scrollable container.
+ * @param {PaginationTracker} tracker - The pagination tracker.
+ * @param {function} fetchCallback - Function to fetch data.
  * @returns {function} A scroll event handler function.
  */
 export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 {
-	/**
-	 * This will handle the scroll event.
-	 *
-	 * @param {object|null} e
-	 * @param {object} list
-	 * @returns {void}
-	 */
 	return (e, list) =>
 	{
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
 		{
-			fetchAndUpdate(fetchCallback, tracker, list);
+			// Prevent multiple concurrent loads
+			if (tracker.loading)
+			{
+				return;
+			}
+
+			tracker.loading = true;
+			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+			{
+				updateRows(rows, tracker, list);
+				tracker.loading = false;
+			});
 		}
 	};
 };

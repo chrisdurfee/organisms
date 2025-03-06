@@ -16,6 +16,7 @@ export class PaginationTracker
 		this.currentOffset = offset;
 		this.limit = limit;
 		this.hasMoreData = true;
+		this.loading = false;
 	}
 
 	/**
@@ -52,6 +53,7 @@ export class PaginationTracker
 	{
 		this.currentOffset = 0;
 		this.hasMoreData = true;
+		this.loading = false;
 	}
 }
 
