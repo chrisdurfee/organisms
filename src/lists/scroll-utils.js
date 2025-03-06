@@ -1,7 +1,7 @@
 import { PaginationTracker } from "./pagination-tracker.js";
 
 // Module-level constant for scroll threshold (in pixels)
-const SCROLL_THRESHOLD = 50;
+const SCROLL_THRESHOLD = 100;
 
 /**
  * Get scroll metrics for a container.
