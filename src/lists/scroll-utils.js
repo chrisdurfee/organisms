@@ -6,17 +6,17 @@ const SCROLL_THRESHOLD = 100;
 /**
  * Get scroll metrics for a container.
  *
- * @param {HTMLElement|Window} container
+ * @param {HTMLElement|globalThis} container
  * @returns {object} Contains scrollTop, clientHeight, and scrollHeight.
  */
 export function getScrollMetrics(container)
 {
 	// @ts-ignore
-	const scrollTop = container === window ? window.pageYOffset : container.scrollTop;
+	const scrollTop = container === globalThis ? globalThis.pageYOffset : container.scrollTop;
 	// @ts-ignore
-	const clientHeight = container === window ? window.innerHeight : container.clientHeight;
+	const clientHeight = container === globalThis ? globalThis.innerHeight : container.clientHeight;
 	// @ts-ignore
-	const scrollHeight = container === window ? document.documentElement.scrollHeight : container.scrollHeight;
+	const scrollHeight = container === globalThis ? globalThis.document.documentElement.scrollHeight : container.scrollHeight;
 	return { scrollTop, clientHeight, scrollHeight };
 }
 

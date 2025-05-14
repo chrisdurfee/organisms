@@ -43,7 +43,7 @@ export class Timer
 	 */
 	createTimer(callBack)
 	{
-		this.timer = window.setTimeout(callBack, this.duration);
+		this.timer = globalThis.setTimeout(callBack, this.duration);
 	}
 
 	/**
@@ -69,7 +69,7 @@ export class Timer
 	 */
 	stop()
 	{
-		window.clearTimeout(this.timer);
+		globalThis.clearTimeout(this.timer);
 	}
 
 	/**

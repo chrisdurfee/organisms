@@ -18,7 +18,7 @@ export class IntervalTimer extends Timer
 	 */
 	createTimer(callBack)
 	{
-		this.timer = window.setInterval(callBack, this.duration);
+		this.timer = globalThis.setInterval(callBack, this.duration);
 	}
 
 	/**
@@ -28,6 +28,6 @@ export class IntervalTimer extends Timer
 	 */
 	stop()
 	{
-		window.clearInterval(this.timer);
+		globalThis.clearInterval(this.timer);
 	}
 }

@@ -7,7 +7,7 @@ import { TableBody } from './table-body.js';
  * A ScrollableTableBody component that updates when its container is scrolled.
  *
  * @param {object} props
- * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to window.
+ * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to globalThis.
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
@@ -37,7 +37,7 @@ export class ScrollableTableBody extends TableBody
 
 		/**
 		 * @member {HTMLElement}
-		 * @default window
+		 * @default globalThis
 		 */
 		this.scrollContainer = null;
 
@@ -101,7 +101,7 @@ export class ScrollableTableBody extends TableBody
 		// @ts-ignore
 		const rowCallBack = this.row.bind(this);
 		// @ts-ignore
-		const container = this.scrollContainer || window;
+		const container = this.scrollContainer || globalThis;
 
 		/**
 		 * This will handle the scroll event.

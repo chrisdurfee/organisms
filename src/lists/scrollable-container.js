@@ -35,7 +35,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
  * A ScrollableList component that updates when its container is scrolled.
  *
  * @param {object} props
- * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to window.
+ * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to globalThis.
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
@@ -47,7 +47,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
 export const ScrollableContainer = Atom((props, children) =>
 {
 	const tracker = new PaginationTracker(props.offset, props.limit);
-	const container = props.scrollContainer || window;
+	const container = props.scrollContainer || globalThis;
 	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
 
 	/**
