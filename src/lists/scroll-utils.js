@@ -141,7 +141,7 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
  */
 export const createScrollHandler = (container, tracker, fetchCallback) =>
 {
-	return (e, { list }) =>
+	return (e, { list }, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
@@ -155,6 +155,11 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 			tracker.loading = true;
 			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
+				if (callBack)
+				{
+					callBack();
+				}
+
 				updateRows(rows, tracker, list);
 				tracker.loading = false;
 			});
@@ -175,7 +180,7 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
  */
 export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 {
-	return (e, list) =>
+	return (e, list, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
 		if (canLoad(metrics, tracker))
@@ -189,6 +194,11 @@ export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 			tracker.loading = true;
 			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
 			{
+				if (callBack)
+				{
+					callBack();
+				}
+
 				updateRows(rows, tracker, list);
 				tracker.loading = false;
 			});

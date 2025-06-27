@@ -80,7 +80,10 @@ export const ScrollableContainer = Atom((props, children) =>
 				/**
 				 * This will request the first fetch.
 				 */
-				handleScroll(null, parent);
+				handleScroll(null, parent, () =>
+				{
+					parent.list.reset();
+				});
 			},
 
 			/**

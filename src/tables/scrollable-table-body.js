@@ -123,9 +123,13 @@ export class ScrollableTableBody extends TableBody
 			 * @param {object} parent
 			 * @returns {void}
 			 */
-			onCreated(ele, parent)
+			onCreated: (ele, parent) =>
 			{
-				handleScroll(null, parent);
+				handleScroll(null, parent, () =>
+				{
+					// @ts-ignore
+					this.reset();
+				});
 			},
 
 			/**
