@@ -61,14 +61,7 @@ export const List = Jot(
 	render()
 	{
 		// @ts-ignore
-		const rowCallBack = (item) =>
-		{
-			console.log('item', item);
-			// @ts-ignore
-			return this.row(item);
-		};
-		// @ts-ignore
-		console.log('data', this, this.data?.get());
+		const rowCallBack = this.row.bind(this);
 
 		return Div({
 			// @ts-ignore
