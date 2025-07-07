@@ -10,4 +10,3 @@ import { IntervalTimer } from './utils/timer/interval-timer.js';
 import { Timer } from './utils/timer/timer.js';
 
 export { DataList, DataTableBody, DynamicTime, IntervalTimer, List, NavLink, ScrollableList, ScrollableTableBody, TableBody, Timer };
-
