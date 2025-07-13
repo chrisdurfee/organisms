@@ -138,6 +138,7 @@ export const List = Jot(
 
 			// Show the list with items
 			return Div({
+				cache: 'listContainer',
 				// @ts-ignore
 				class: `list ${this.class || ''}`,
 				for: ['items', rowCallBack]
@@ -192,7 +193,7 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.delete(`items[${index}]`);
 		// @ts-ignore
-		const rowElement = ChildHelper.get(this.panel, index);
+		const rowElement = ChildHelper.get(this.listContainer, index);
 		if (rowElement)
 		{
 			ChildHelper.remove(rowElement);
@@ -238,7 +239,7 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.set(`items[${index}]`, item);
 		// @ts-ignore
-		const oldRow = ChildHelper.get(this.panel, index);
+		const oldRow = ChildHelper.get(this.listContainer, index);
 		// @ts-ignore
 		const layout = this.row(item, index);
 		if (oldRow && layout)
@@ -385,7 +386,7 @@ export const List = Jot(
 		if (rows.length > 0)
 		{
 			// @ts-ignore
-			ChildHelper.append(rows, this.panel, this);
+			ChildHelper.append(rows, this.listContainer, this);
 		}
 	},
 
@@ -508,7 +509,7 @@ export const List = Jot(
 		if (rows.length > 0)
 		{
 			// @ts-ignore
-			ChildHelper.prepend(rows, this.panel, this);
+			ChildHelper.prepend(rows, this.listContainer, this);
 		}
 	},
 
