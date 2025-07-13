@@ -53,11 +53,10 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		const items = (this.items) ? clone(this.items) : [];
-		const hasItems = (Array.isArray(items) && items.length > 0);
 
 		return new Data({
 			items,
-			hasItems
+			hasItems: null
 		});
 	},
 
@@ -80,13 +79,41 @@ export const List = Jot(
 	 */
 	linkParentData()
 	{
+		let parentValue = false;
 		// @ts-ignore
 		const parentData = this.parent?.data ?? this.parent?.context?.data ?? null;
 		if (parentData)
 		{
+			parentValue = parentData.get('hasItems');
 			// @ts-ignore
 			this.data.link(parentData, 'hasItems');
 		}
+
+		let hasItems = parentValue || null;
+		if (parentValue !== undefined)
+		{
+			// @ts-ignore
+			const items = this.items || [];
+			// @ts-ignore
+			hasItems = (Array.isArray(items) && items.length > 0);
+			// @ts-ignore
+			this.data.set('hasItems', hasItems);
+		}
+
+		// @ts-ignore
+		this.defaultHasItemValue = hasItems;
+	},
+
+	/**
+	 * Called when the component is destroyed.
+	 *
+	 * @public
+	 * @return {void}
+	 */
+	destroy()
+	{
+		// @ts-ignore
+		this.data.hasItems = this.defaultHasItemValue;
 	},
 
 	/**
