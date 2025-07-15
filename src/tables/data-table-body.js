@@ -99,6 +99,7 @@ export class DataTableBody extends TableBody
 			 */
 			onCreated: (ele, parent) =>
 			{
+				this.listContainer = ele;
 				this.refresh();
 			},
 

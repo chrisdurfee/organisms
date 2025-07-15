@@ -126,24 +126,20 @@ export const List = Jot(
 		// @ts-ignore
 		const rowCallBack = this.row.bind(this);
 
-		return On('hasItems', (hasItems) =>
-		{
-			// Show empty state when no items and emptyState is provided
-			// @ts-ignore
-			if (!hasItems && this.emptyState)
+		return Div({ class: 'flex flex-auto flex-col' }, [
+			On('hasItems', (hasItems) =>
 			{
 				// @ts-ignore
-				return this.emptyState();
-			}
-
-			// Show the list with items
-			return Div({
+				return (!hasItems && this.emptyState)? this.emptyState() : null;
+			}),
+			Div({
 				cache: 'listContainer',
 				// @ts-ignore
 				class: `list ${this.class || ''}`,
+				onSet: ['hasItems', { hidden: false }],
 				for: ['items', rowCallBack]
-			});
-		});
+			})
+		]);
 	},
 
 	/**

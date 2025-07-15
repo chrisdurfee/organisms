@@ -28,6 +28,10 @@ export class TableBody extends List
 		const rowCallBack = this.row.bind(this);
 
 		return Tbody({
+			onCreated: (ele) =>
+			{
+				this.listContainer = ele;
+			},
 			// @ts-ignore
 			class: `tbody ${this.class || ''}`,
 			for: ['items', rowCallBack]
