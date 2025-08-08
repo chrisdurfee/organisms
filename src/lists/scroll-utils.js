@@ -50,13 +50,15 @@ export const canLoad = (metrics, tracker) =>
  * @param {Array} rows
  * @param {PaginationTracker} tracker
  * @param {object} list
+ * @param {string|null} lastCursor - The last cursor value.
+ * @returns {void}
  */
-export const updateRows = (rows, tracker, list) =>
+export const updateRows = (rows, tracker, list, lastCursor = null) =>
 {
 	if (rows && rows.length > 0)
 	{
 		list.append(rows);
-		tracker.update(rows.length);
+		tracker.update(rows.length, lastCursor);
 	}
 	else
 	{
@@ -72,7 +74,7 @@ export const updateRows = (rows, tracker, list) =>
  */
 export const setupFetchCallback = (data) =>
 {
-	return (offset, limit, callback) =>
+	return (tracker, callback) =>
 	{
 		/**
 		 * This will handle the result of the fetch.
@@ -83,14 +85,16 @@ export const setupFetchCallback = (data) =>
 		const resultCallback = (response) =>
 		{
 			let rows = [];
+			let lastCursor = null;
 			if (response)
 			{
 				rows = response.rows || response.items || [];
+				lastCursor = response.lastCursor || null;
 			}
-			callback(rows);
+			callback(rows, lastCursor);
 		};
 
-		data.xhr.all('', resultCallback, offset, limit);
+		data.xhr.all('', resultCallback, tracker.currentOffset, tracker.limit, tracker.lastCursor);
 	};
 };
 
@@ -104,9 +108,9 @@ export const setupFetchCallback = (data) =>
  */
 export const fetchAndUpdate = (fetchCallback, tracker, list) =>
 {
-	fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+	fetchCallback(tracker, (rows, lastCursor) =>
 	{
-		updateRows(rows, tracker, list);
+		updateRows(rows, tracker, list, lastCursor);
 	});
 };
 
@@ -121,10 +125,10 @@ export const fetchAndUpdate = (fetchCallback, tracker, list) =>
 export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 {
 	tracker.reset();
-	fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+	fetchCallback(tracker, (rows, lastCursor) =>
 	{
 		list.reset();
-		updateRows(rows, tracker, list);
+		updateRows(rows, tracker, list, lastCursor);
 	});
 };
 
@@ -153,14 +157,14 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 			}
 
 			tracker.loading = true;
-			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+			fetchCallback(tracker, (rows, lastCursor) =>
 			{
 				if (callBack)
 				{
 					callBack();
 				}
 
-				updateRows(rows, tracker, list);
+				updateRows(rows, tracker, list, lastCursor);
 				tracker.loading = false;
 			});
 		}
@@ -192,14 +196,14 @@ export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 			}
 
 			tracker.loading = true;
-			fetchCallback(tracker.currentOffset, tracker.limit, (rows) =>
+			fetchCallback(tracker, (rows, lastCursor) =>
 			{
 				if (callBack)
 				{
 					callBack();
 				}
 
-				updateRows(rows, tracker, list);
+				updateRows(rows, tracker, list, lastCursor);
 				tracker.loading = false;
 			});
 		}
