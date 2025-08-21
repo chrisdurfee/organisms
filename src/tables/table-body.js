@@ -146,6 +146,30 @@ export class TableBody extends List
 	}
 
 	/**
+	 * This will create a row for each item.
+	 * Override to handle skeleton items differently from real data items.
+	 *
+	 * @param {*} item
+	 * @param {*} index
+	 * @param {*} scope
+	 * @param {*} children
+	 * @returns {object|null}
+	 */
+	row(item, index, scope, children)
+	{
+		// If this is a skeleton item (already a component), return it directly
+		// @ts-ignore
+		if (this.data && this.data.get('showSkeleton'))
+		{
+			return item;
+		}
+
+		// For real data items, use the normal row processing
+		// @ts-ignore
+		return super.row(item, index, scope, children);
+	}
+
+	/**
 	 * This will render the list.
 	 *
 	 * @returns {object}
@@ -164,5 +188,17 @@ export class TableBody extends List
 			class: `tbody ${this.class || ''}`,
 			for: ['items', rowCallBack]
 		});
+	}
+
+	/**
+	 * Called when the component is destroyed.
+	 *
+	 * @public
+	 * @return {void}
+	 */
+	destroy()
+	{
+		// @ts-ignore
+		super.destroy();
 	}
 };

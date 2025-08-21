@@ -24,7 +24,7 @@ export const SkeletonTableRow = ({ columnCount = 3, customCell, key }) =>
 
 		return Td({ class: 'px-6 py-4' }, [
 			Div({
-				class: `${width} h-4 bg-gray-200 rounded animate-pulse`
+				class: `${width} h-4 bg-muted animate-pulse rounded-md`
 			})
 		]);
 	};
