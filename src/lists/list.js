@@ -273,6 +273,18 @@ export const List = Jot(
 	},
 
 	/**
+	 * This will check if the list is empty.
+	 *
+	 * @public
+	 * @returns {boolean}
+	 */
+	isEmpty()
+	{
+		// @ts-ignore
+		return this.data.get('items')?.length === 0;
+	},
+
+	/**
 	 * This will set the items in the list.
 	 *
 	 * @public
