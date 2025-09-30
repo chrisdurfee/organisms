@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.0.136",
+	"version": "1.0.137",
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
@@ -36,6 +36,7 @@
 	"files": [
 		"package.json",
 		"readme.md",
+		"copilot.md",
 		"dist"
 	],
 	"exports": {
