@@ -1,7 +1,7 @@
 import { Div, On } from '@base-framework/atoms';
 import { Component, Data, Jot } from '@base-framework/base';
-import { ChildHelper } from 'src/utils/child-helper.js';
-import { DataHelper } from 'src/utils/data-helper.js';
+import { ChildHelper } from '../utils/child-helper.js';
+import { DataHelper } from '../utils/data-helper.js';
 import { RowDivider } from './row-divider.js';
 
 /**
@@ -130,7 +130,7 @@ export const List = Jot(
 			On('hasItems', (hasItems) =>
 			{
 				// @ts-ignore
-				return (!hasItems && this.emptyState)? this.emptyState() : null;
+				return (hasItems === false && this.emptyState)? this.emptyState() : null;
 			}),
 			Div({
 				cache: 'listContainer',

@@ -1,6 +1,6 @@
 import { Span } from "@base-framework/atoms";
 import { Component, SimpleData } from "@base-framework/base";
-import { IntervalTimer } from "src/utils/timer/interval-timer.js";
+import { IntervalTimer } from "../utils/timer/interval-timer.js";
 
 /**
  * This will create a simple flat data object to use to bind
