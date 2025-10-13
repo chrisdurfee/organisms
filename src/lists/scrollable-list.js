@@ -17,6 +17,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
+ * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
  */
@@ -38,6 +39,7 @@ export const ScrollableList = Atom((props) => (
 				divider: props.divider,
 				role: 'list',
 				class: props.class,
+				emptyState: props.emptyState || null,
 				rowItem: props.rowItem
 			})
 		]
