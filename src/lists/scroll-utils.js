@@ -21,7 +21,7 @@ export function getScrollMetrics(container)
 }
 
 /**
- * Check if the scroll position indicates we should load more items.
+ * Check if the scroll position indicates we should load more items at the bottom.
  *
  * @param {object} metrics - The scroll metrics.
  * @param {number} [threshold=SCROLL_THRESHOLD] - The threshold in pixels.
@@ -33,7 +33,19 @@ export function shouldLoadMore(metrics, threshold = SCROLL_THRESHOLD)
 }
 
 /**
- * Check if more items can be loaded based on metrics and tracker state.
+ * Check if the scroll position indicates we should load more items at the top.
+ *
+ * @param {object} metrics - The scroll metrics.
+ * @param {number} [threshold=SCROLL_THRESHOLD] - The threshold in pixels.
+ * @returns {boolean}
+ */
+export function shouldLoadAtTop(metrics, threshold = SCROLL_THRESHOLD)
+{
+	return metrics.scrollTop <= threshold;
+}
+
+/**
+ * Check if more items can be loaded at the bottom based on metrics and tracker state.
  *
  * @param {object} metrics - The scroll metrics.
  * @param {PaginationTracker} tracker - The pagination tracker.
@@ -45,7 +57,19 @@ export const canLoad = (metrics, tracker) =>
 };
 
 /**
- * Update the rows in the list and update the tracker state.
+ * Check if more items can be loaded at the top based on metrics and tracker state.
+ *
+ * @param {object} metrics - The scroll metrics.
+ * @param {PaginationTracker} tracker - The pagination tracker.
+ * @returns {boolean}
+ */
+export const canLoadAtTop = (metrics, tracker) =>
+{
+	return shouldLoadAtTop(metrics) && tracker.canLoadMore();
+};
+
+/**
+ * Update the rows in the list by appending and update the tracker state.
  *
  * @param {Array} rows
  * @param {PaginationTracker} tracker
@@ -63,6 +87,51 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
 	else
 	{
 		tracker.hasMoreData = false;
+	}
+};
+
+/**
+ * Update the rows in the list by prepending older items and update the tracker state.
+ * Used when scrolling up to load older items.
+ *
+ * @param {Array} rows
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @param {string|null} lastCursor - The last cursor value.
+ * @returns {void}
+ */
+export const updateRowsAtTop = (rows, tracker, list, lastCursor = null) =>
+{
+	if (rows && rows.length > 0)
+	{
+		list.prepend(rows);
+		tracker.update(rows.length, lastCursor);
+	}
+	else
+	{
+		tracker.hasMoreData = false;
+	}
+};
+
+/**
+ * Update rows by prepending newer items to the list.
+ *
+ * @param {Array} rows
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @param {string|number|null} newestId - The ID of the newest item.
+ * @returns {void}
+ */
+export const prependRows = (rows, tracker, list, newestId = null) =>
+{
+	if (rows && rows.length > 0)
+	{
+		list.prepend(rows);
+		// Update the newest ID to the first item's ID if available
+		if (newestId !== null)
+		{
+			tracker.updateNewest(newestId);
+		}
 	}
 };
 
@@ -99,6 +168,44 @@ export const setupFetchCallback = (data) =>
 };
 
 /**
+ * Set up a fetch callback for loading newer data (forward pagination).
+ * Uses the 'since' parameter to fetch items newer than the current newest ID.
+ *
+ * @param {object} data
+ * @returns {function}
+ */
+export const setupFetchNewerCallback = (data) =>
+{
+	return (tracker, callback) =>
+	{
+		/**
+		 * This will handle the result of the fetch.
+		 *
+		 * @param {object|null} response
+		 * @returns {void}
+		 */
+		const resultCallback = (response) =>
+		{
+			let rows = [];
+			let newestId = null;
+			if (response)
+			{
+				rows = response.rows || response.items || [];
+				// Get the newest ID from the first item if available
+				if (rows.length > 0 && rows[0].id)
+				{
+					newestId = rows[0].id;
+				}
+			}
+			callback(rows, newestId);
+		};
+
+		// Pass since as a parameter to the all method
+		data.xhr.all('', resultCallback, 0, tracker.limit, null, tracker.newestId);
+	};
+};
+
+/**
  * Fetch and update rows in the list.
  *
  * @param {function} fetchCallback
@@ -129,6 +236,41 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 	{
 		list.reset();
 		updateRows(rows, tracker, list, lastCursor);
+
+		// Set the newest ID from the first item if available
+		if (rows && rows.length > 0 && rows[0].id)
+		{
+			tracker.updateNewest(rows[0].id);
+		}
+	});
+};
+
+/**
+ * Fetch and prepend newer items to the list.
+ * This is designed to be called manually (e.g., via timer/polling) rather than on scroll.
+ *
+ * @param {function} fetchNewerCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {void}
+ */
+export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
+{
+	if (!tracker.canLoadNewer())
+	{
+		return;
+	}
+
+	if (tracker.loadingNewer)
+	{
+		return;
+	}
+
+	tracker.loadingNewer = true;
+	fetchNewerCallback(tracker, (rows, newestId) =>
+	{
+		prependRows(rows, tracker, list, newestId);
+		tracker.loadingNewer = false;
 	});
 };
 
@@ -141,14 +283,18 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
  * @param {object} container - The scrollable container.
  * @param {PaginationTracker} tracker - The pagination tracker.
  * @param {function} fetchCallback - Function to fetch data.
+ * @param {string} [direction='down'] - Scroll direction: 'down' for bottom loading, 'up' for top loading.
  * @returns {function} A scroll event handler function.
  */
-export const createScrollHandler = (container, tracker, fetchCallback) =>
+export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down') =>
 {
+	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
+	const updateFunc = direction === 'up' ? updateRowsAtTop : updateRows;
+
 	return (e, { list }, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
-		if (canLoad(metrics, tracker))
+		if (canLoadFunc(metrics, tracker))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)
@@ -164,7 +310,7 @@ export const createScrollHandler = (container, tracker, fetchCallback) =>
 					callBack();
 				}
 
-				updateRows(rows, tracker, list, lastCursor);
+				updateFunc(rows, tracker, list, lastCursor);
 				tracker.loading = false;
 			});
 		}

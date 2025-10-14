@@ -1,6 +1,6 @@
 import { Atom } from "@base-framework/base";
+import BiDirectionalContainer from "./bi-directional-container.js";
 import { List } from "./list.js";
-import ScrollableContainer from "./scrollable-container.js";
 
 /**
  * A ScrollableList component that updates when its container is scrolled.
@@ -23,8 +23,9 @@ import ScrollableContainer from "./scrollable-container.js";
  * @returns {object}
  */
 export const ScrollableList = Atom((props) => (
-	ScrollableContainer(
+	BiDirectionalContainer(
 		{
+			scrollDirection: props.scrollDirection || 'down',
 			scrollContainer: props.scrollContainer,
 			loadMoreItems: props.loadMoreItems,
 			offset: props.offset,

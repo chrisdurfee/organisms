@@ -104,3 +104,28 @@ SecondaryButton({
     }
 })
 ```
+
+## Features
+
+### Bi-Directional Pagination
+
+The library includes advanced bi-directional pagination support for building real-time interfaces:
+
+- **Dual Scroll Directions**: Support for both feed-style (scroll down) and chat-style (scroll up) interfaces
+- **Cursor-based Pagination**: Efficient loading of older items using keyset pagination
+- **Since-based Forward Pagination**: Load newer items using timestamp or ID-based queries
+- **External Polling Control**: Flexible architecture allowing parent components to control update timing
+- **Optimized for Real-time**: Designed for chat, messaging, activity feeds, and social media timelines
+
+#### Scroll Directions
+
+- **`scrollDirection: 'down'`** (default): For feeds/timelines - scroll down for older items, new items appear at top
+- **`scrollDirection: 'up'`**: For chat/messaging - scroll up for older items, new messages appear at bottom
+
+For detailed documentation, see:
+- [SCROLL_DIRECTIONS.md](./docs/SCROLL_DIRECTIONS.md) - Complete scroll direction guide
+- [BI_DIRECTIONAL_IMPLEMENTATION.md](./docs/BI_DIRECTIONAL_IMPLEMENTATION.md) - Implementation guide
+- [Examples](./docs/examples/) - Working code examples
+
+## License
+This project is licensed under the MIT License.
