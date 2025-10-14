@@ -24,6 +24,8 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  * @property {object} [emptyState] - The empty state component to show when no items
  * @property {object} [divider] - The divider configuration
  * @property {function} rowItem - Function to render each row item
+ * @property {string} [cache] - The cache name to use
+ * @property {boolean} [linkParent] - The parent data to link
  *
  * @type {typeof Component}
  */
@@ -82,7 +84,8 @@ export const List = Jot(
 		let parentValue = false;
 		// @ts-ignore
 		const parentData = this.parent?.data ?? this.parent?.context?.data ?? null;
-		if (parentData)
+		// @ts-ignore
+		if (parentData && this.linkParent !== false)
 		{
 			parentValue = parentData.get('hasItems');
 			// @ts-ignore

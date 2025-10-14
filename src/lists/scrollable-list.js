@@ -19,6 +19,7 @@ import ScrollableContainer from "./scrollable-container.js";
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {string} [props.cache] - The cache name to use.
+ * @property {boolean} [props.linkParent] - Whether to link the parent data.
  * @returns {object}
  */
 export const ScrollableList = Atom((props) => (
@@ -40,7 +41,8 @@ export const ScrollableList = Atom((props) => (
 				role: 'list',
 				class: props.class,
 				emptyState: props.emptyState || null,
-				rowItem: props.rowItem
+				rowItem: props.rowItem,
+				linkParent: props.linkParent ?? true
 			})
 		]
 	)

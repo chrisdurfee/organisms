@@ -17,6 +17,7 @@ import { List } from "./list.js";
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
+ * @property {boolean} [props.linkParent] - Whether to link the parent data.
  * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
  */
@@ -39,7 +40,8 @@ export const DynamicList = Atom((props) => (
 				role: 'list',
 				class: props.class,
 				emptyState: props.emptyState || null,
-				rowItem: props.rowItem
+				rowItem: props.rowItem,
+                linkParent: props.linkParent || false
 			})
 		]
 	)
