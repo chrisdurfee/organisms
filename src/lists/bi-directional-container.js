@@ -165,9 +165,21 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				{
 					parent.list.reset();
 
-					// For 'up' direction (chat), scroll to bottom after initial load
+					// For 'up' direction (chat), ensure newestId is set from the loaded items
 					if (scrollDirection === 'up')
 					{
+						// Get the last item's ID as the newestId if not already set
+						// (rows are typically in ASC order, so last item has highest ID)
+						const items = parent.list.data?.items || parent.list.data?.rows || [];
+						if (items.length > 0 && tracker.newestId === null)
+						{
+							const lastItem = items[items.length - 1];
+							if (lastItem?.id)
+							{
+								tracker.updateNewest(lastItem.id);
+							}
+						}
+
 						// Use setTimeout to ensure DOM has updated
 						setTimeout(() =>
 						{
@@ -194,7 +206,9 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 */
 				parent.list.fetchNew = () =>
 				{
-					if (tracker.canLoadNewer() && !tracker.loadingNewer)
+					// Allow fetching if we're not already loading
+					// Don't require hasNewerData to be true (it starts as false)
+					if (!tracker.loadingNewer)
 					{
 						tracker.loadingNewer = true;
 						fetchNewerCallback(tracker, (rows, newestId) =>
@@ -213,6 +227,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 									prependRows(rows, tracker, parent.list, newestId);
 								}
 
+								// Update newest ID tracker if available
 								if (newestId !== null)
 								{
 									tracker.updateNewest(newestId);

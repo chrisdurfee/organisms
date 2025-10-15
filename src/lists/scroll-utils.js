@@ -224,10 +224,15 @@ export const setupFetchNewerCallback = (data) =>
 			if (response)
 			{
 				rows = response.rows || response.items || [];
-				// Get the newest ID from the first item if available
-				if (rows.length > 0 && rows[0].id)
+				// Get the newest ID - use last item for ASC order, first item for DESC order
+				// For fetchNewer, we want the highest ID which is typically the last item
+				if (rows.length > 0)
 				{
-					newestId = rows[0].id;
+					const lastItem = rows[rows.length - 1];
+					if (lastItem?.id)
+					{
+						newestId = lastItem.id;
+					}
 				}
 			}
 			callback(rows, newestId);
@@ -270,10 +275,15 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 		list.reset();
 		updateRows(rows, tracker, list, lastCursor);
 
-		// Set the newest ID from the first item if available
-		if (rows && rows.length > 0 && rows[0].id)
+		// Set the newest ID from the last item if available
+		// (rows are typically in ASC order, so last item has highest ID)
+		if (rows && rows.length > 0)
 		{
-			tracker.updateNewest(rows[0].id);
+			const lastItem = rows[rows.length - 1];
+			if (lastItem?.id)
+			{
+				tracker.updateNewest(lastItem.id);
+			}
 		}
 	});
 };
@@ -343,11 +353,25 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 					callBack();
 				}
 
+				// Check if this is initial load BEFORE updating (which increments offset)
+				const isInitialLoad = tracker.currentOffset === 0;
+
 				// Use appropriate update function based on direction
 				if (isUpDirection)
 				{
 					// For 'up' direction, pass container to preserve scroll position
 					updateRowsAtTop(rows, tracker, list, lastCursor, container);
+
+					// Set newestId from the last item if this is initial load
+					// (rows are typically in ASC order, so last item has highest ID)
+					if (isInitialLoad && rows && rows.length > 0)
+					{
+						const lastItem = rows[rows.length - 1];
+						if (lastItem?.id)
+						{
+							tracker.updateNewest(lastItem.id);
+						}
+					}
 				}
 				else
 				{
