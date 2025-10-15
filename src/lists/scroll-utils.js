@@ -4,6 +4,45 @@ import { PaginationTracker } from "./pagination-tracker.js";
 const SCROLL_THRESHOLD = 100;
 
 /**
+ * Extract the newest ID from an array of rows by detecting sort order.
+ * Compares first and last item IDs to determine if data is in ASC or DESC order.
+ *
+ * @param {Array} rows - The array of row objects
+ * @returns {number|string|null} The highest ID, or null if no valid ID found
+ */
+export function getNewestId(rows)
+{
+	if (!rows || rows.length === 0)
+	{
+		return null;
+	}
+
+	const firstItem = rows[0];
+	const lastItem = rows[rows.length - 1];
+
+	// Both items have IDs - compare to detect sort order
+	if (firstItem?.id && lastItem?.id)
+	{
+		// If first ID > last ID, it's DESC order (newest first)
+		// If first ID < last ID, it's ASC order (oldest first)
+		return firstItem.id > lastItem.id ? firstItem.id : lastItem.id;
+	}
+
+	// Only one item has an ID - return whichever exists
+	if (firstItem?.id)
+	{
+		return firstItem.id;
+	}
+
+	if (lastItem?.id)
+	{
+		return lastItem.id;
+	}
+
+	return null;
+}
+
+/**
  * Get scroll metrics for a container.
  *
  * @param {HTMLElement|globalThis} container
@@ -224,16 +263,7 @@ export const setupFetchNewerCallback = (data) =>
 			if (response)
 			{
 				rows = response.rows || response.items || [];
-				// Get the newest ID - use last item for ASC order, first item for DESC order
-				// For fetchNewer, we want the highest ID which is typically the last item
-				if (rows.length > 0)
-				{
-					const lastItem = rows[rows.length - 1];
-					if (lastItem?.id)
-					{
-						newestId = lastItem.id;
-					}
-				}
+				newestId = getNewestId(rows);
 			}
 			callback(rows, newestId);
 		};
@@ -275,15 +305,11 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 		list.reset();
 		updateRows(rows, tracker, list, lastCursor);
 
-		// Set the newest ID from the last item if available
-		// (rows are typically in ASC order, so last item has highest ID)
-		if (rows && rows.length > 0)
+		// Set the newest ID by detecting sort order
+		const newestId = getNewestId(rows);
+		if (newestId !== null)
 		{
-			const lastItem = rows[rows.length - 1];
-			if (lastItem?.id)
-			{
-				tracker.updateNewest(lastItem.id);
-			}
+			tracker.updateNewest(newestId);
 		}
 	});
 };
@@ -362,14 +388,13 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 					// For 'up' direction, pass container to preserve scroll position
 					updateRowsAtTop(rows, tracker, list, lastCursor, container);
 
-					// Set newestId from the last item if this is initial load
-					// (rows are typically in ASC order, so last item has highest ID)
-					if (isInitialLoad && rows && rows.length > 0)
+					// Set newestId from initial load by detecting sort order
+					if (isInitialLoad)
 					{
-						const lastItem = rows[rows.length - 1];
-						if (lastItem?.id)
+						const newestId = getNewestId(rows);
+						if (newestId !== null)
 						{
-							tracker.updateNewest(lastItem.id);
+							tracker.updateNewest(newestId);
 						}
 					}
 				}

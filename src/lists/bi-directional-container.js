@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, fetchAndRefresh, prependRows, setupFetchCallback, setupFetchNewerCallback, updateRows } from "./scroll-utils.js";
+import { createScrollHandler, fetchAndRefresh, getNewestId, prependRows, setupFetchCallback, setupFetchNewerCallback, updateRows } from "./scroll-utils.js";
 
 /**
  * This will reset the tracker and fetch new data.
@@ -168,15 +168,14 @@ export const BiDirectionalContainer = Atom((props, children) =>
 					// For 'up' direction (chat), ensure newestId is set from the loaded items
 					if (scrollDirection === 'up')
 					{
-						// Get the last item's ID as the newestId if not already set
-						// (rows are typically in ASC order, so last item has highest ID)
+						// Get the newest ID by detecting sort order
 						const items = parent.list.data?.items || parent.list.data?.rows || [];
-						if (items.length > 0 && tracker.newestId === null)
+						if (tracker.newestId === null)
 						{
-							const lastItem = items[items.length - 1];
-							if (lastItem?.id)
+							const newestId = getNewestId(items);
+							if (newestId !== null)
 							{
-								tracker.updateNewest(lastItem.id);
+								tracker.updateNewest(newestId);
 							}
 						}
 
