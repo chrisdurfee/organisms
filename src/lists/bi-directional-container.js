@@ -203,7 +203,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * - 'down': prepends to top (for feeds)
 				 * - 'up': appends to bottom (for chat)
 				 */
-				parent.list.fetchNew = () =>
+				parent.list.fetchNew = (shouldScroll = false) =>
 				{
 					// Allow fetching if we're not already loading
 					// Don't require hasNewerData to be true (it starts as false)
@@ -233,6 +233,11 @@ export const BiDirectionalContainer = Atom((props, children) =>
 								}
 							}
 							tracker.loadingNewer = false;
+
+                            if (shouldScroll && scrollDirection === 'up')
+                            {
+                                parent.list.scrollToBottom();
+                            }
 						});
 					}
 				};
