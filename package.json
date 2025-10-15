@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.0.147",
+	"version": "1.0.148",
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
