@@ -15,12 +15,14 @@ export class RowDivider
 	 * @param {function} options.layout
 	 * @param {string} options.itemProperty
 	 * @param {function} [options.customCompare]
+	 * @param {boolean} [options.skipFirst=false] - Skip adding divider for the first item
 	 */
-	constructor({ layout, itemProperty, customCompare })
+	constructor({ layout, itemProperty, customCompare, skipFirst = false })
 	{
 		this.layout = layout;
 		this.itemProperty = itemProperty
 		this.customCompare = customCompare;
+		this.skipFirst = skipFirst;
 
 		this.lastAppend = null;
 		this.lastPrepend = null;
@@ -65,7 +67,9 @@ export class RowDivider
 	{
 		const value = this.getValue(item);
 		const first = this.setFirstValues(value);
-		if (first)
+
+		// Only add divider for first item if skipFirst is false
+		if (first && !this.skipFirst)
 		{
 			this.addDivider(value, children);
 		}
@@ -99,7 +103,9 @@ export class RowDivider
 	{
 		const value = this.getValue(item);
 		const first = this.setFirstValues(value);
-		if (first)
+
+		// Only add divider for first item if skipFirst is false
+		if (first && !this.skipFirst)
 		{
 			this.addDivider(value, children);
 		}
