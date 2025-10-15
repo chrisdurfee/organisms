@@ -41,6 +41,11 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
  * - **"up"**: Scrolling up loads older items (prepends to top), fetchNew() appends newer items to bottom
  *   Use for: Chat/messaging interfaces where newest messages are at bottom
  *
+ * Automatic scroll position management for 'up' direction:
+ * - Initial load automatically scrolls to bottom (shows newest messages)
+ * - Prepending older messages preserves scroll position (prevents jarring jumps)
+ * - Exposes scrollToBottom() method for manual control
+ *
  * @param {object} props
  * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to globalThis.
  * @property {function} [props.loadMoreItems] - A function to fetch older items (backward pagination using cursor).
@@ -159,6 +164,25 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				handleScroll(null, parent, () =>
 				{
 					parent.list.reset();
+
+					// For 'up' direction (chat), scroll to bottom after initial load
+					if (scrollDirection === 'up')
+					{
+						// Use setTimeout to ensure DOM has updated
+						setTimeout(() =>
+						{
+							if (container === globalThis)
+							{
+								const scrollHeight = globalThis.document.documentElement.scrollHeight;
+								globalThis.scrollTo(0, scrollHeight);
+							}
+							else
+							{
+								// @ts-ignore
+								container.scrollTop = container.scrollHeight;
+							}
+						}, 0);
+					}
 				});
 
 				/**
@@ -196,6 +220,24 @@ export const BiDirectionalContainer = Atom((props, children) =>
 							}
 							tracker.loadingNewer = false;
 						});
+					}
+				};
+
+				/**
+				 * Add method to scroll to bottom (useful for chat interfaces).
+				 * This can be called after fetching new messages to keep user at bottom.
+				 */
+				parent.list.scrollToBottom = () =>
+				{
+					if (container === globalThis)
+					{
+						const scrollHeight = globalThis.document.documentElement.scrollHeight;
+						globalThis.scrollTo(0, scrollHeight);
+					}
+					else
+					{
+						// @ts-ignore
+						container.scrollTop = container.scrollHeight;
 					}
 				};
 			},

@@ -93,19 +93,52 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
 /**
  * Update the rows in the list by prepending older items and update the tracker state.
  * Used when scrolling up to load older items.
+ * Preserves scroll position to prevent content jumping.
  *
  * @param {Array} rows
  * @param {PaginationTracker} tracker
  * @param {object} list
  * @param {string|null} lastCursor - The last cursor value.
+ * @param {HTMLElement|globalThis} container - The scroll container.
  * @returns {void}
  */
-export const updateRowsAtTop = (rows, tracker, list, lastCursor = null) =>
+export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, container = null) =>
 {
 	if (rows && rows.length > 0)
 	{
+		// Save scroll position before prepending
+		let scrollHeight = 0;
+		let scrollTop = 0;
+
+		if (container)
+		{
+			const metrics = getScrollMetrics(container);
+			scrollHeight = metrics.scrollHeight;
+			scrollTop = metrics.scrollTop;
+		}
+
+		// Prepend the rows
 		list.prepend(rows);
 		tracker.update(rows.length, lastCursor);
+
+		// Restore scroll position to prevent jump
+		if (container)
+		{
+			// Calculate the difference in height after prepending
+			const newMetrics = getScrollMetrics(container);
+			const heightDifference = newMetrics.scrollHeight - scrollHeight;
+
+			// Adjust scroll position by the height difference
+			if (container === globalThis)
+			{
+				globalThis.scrollTo(0, scrollTop + heightDifference);
+			}
+			else
+			{
+				// @ts-ignore
+				container.scrollTop = scrollTop + heightDifference;
+			}
+		}
 	}
 	else
 	{
@@ -278,7 +311,7 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
  * Create a scroll event handler for the container.
  *
  * This handler ensures that loading is triggered only when the user is close
- * to the bottom of the container and prevents multiple concurrent loads.
+ * to the bottom/top of the container and prevents multiple concurrent loads.
  *
  * @param {object} container - The scrollable container.
  * @param {PaginationTracker} tracker - The pagination tracker.
@@ -289,7 +322,7 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
 export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down') =>
 {
 	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
-	const updateFunc = direction === 'up' ? updateRowsAtTop : updateRows;
+	const isUpDirection = direction === 'up';
 
 	return (e, { list }, callBack) =>
 	{
@@ -310,7 +343,17 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 					callBack();
 				}
 
-				updateFunc(rows, tracker, list, lastCursor);
+				// Use appropriate update function based on direction
+				if (isUpDirection)
+				{
+					// For 'up' direction, pass container to preserve scroll position
+					updateRowsAtTop(rows, tracker, list, lastCursor, container);
+				}
+				else
+				{
+					updateRows(rows, tracker, list, lastCursor);
+				}
+
 				tracker.loading = false;
 			});
 		}
