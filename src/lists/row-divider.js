@@ -40,6 +40,21 @@ export class RowDivider
 	}
 
 	/**
+	 * This will set the prepend boundary to the first item's value.
+	 * This should be called before prepending a new batch of items.
+	 *
+	 * @param {object} firstItem
+	 * @returns {void}
+	 */
+	setPrependBoundary(firstItem)
+	{
+		if (firstItem)
+		{
+			this.lastPrepend = this.getValue(firstItem);
+		}
+	}
+
+	/**
 	 * This will set the first values.
 	 *
 	 * @param {*} value
@@ -51,7 +66,7 @@ export class RowDivider
 		if (!last)
 		{
 			this.lastAppend = value;
-			//this.lastPrepend = value;
+			this.lastPrepend = value;
 		}
 		return (!last);
 	}
@@ -108,13 +123,22 @@ export class RowDivider
 		if (first && !this.skipFirst)
 		{
 			this.addDivider(value, children);
+			return;
+		}
+
+		// Skip adding divider on first item when skipFirst is true
+		if (first)
+		{
+			return;
 		}
 
 		if (this.compare(this.lastPrepend, value))
 		{
-			this.addDivider(this.lastPrepend, children);
-			this.lastPrepend = value;
+			this.addDivider(value, children);
 		}
+
+		// Always update lastPrepend to track the current date boundary
+		this.lastPrepend = value;
 	}
 
 	/**

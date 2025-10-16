@@ -473,6 +473,19 @@ export const List = Jot(
 
 		items = clone(items);
 
+		// Set the prepend boundary to the first existing item's date
+		// @ts-ignore
+		if (this.rowDivider)
+		{
+			// @ts-ignore
+			const existingItems = this.data.get('items') || [];
+			if (existingItems.length > 0)
+			{
+				// @ts-ignore
+				this.rowDivider.setPrependBoundary(existingItems[0]);
+			}
+		}
+
 		/**
 		 * This will get all the new rows to be batched later.
 		 */
