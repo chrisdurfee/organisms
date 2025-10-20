@@ -165,8 +165,6 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 		{
 			tracker.hasMoreData = false;
 
-			console.log('Received fewer rows than limit - adding trailing divider');
-
 			// Add a trailing divider to show the date of the oldest items
 			if (list.addTrailingDivider)
 			{
@@ -197,16 +195,10 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 	{
 		tracker.hasMoreData = false;
 
-		console.log('No more data to load - attempting to add trailing divider');
-
 		// Add a trailing divider to show the date of the oldest items
 		if (list.addTrailingDivider)
 		{
 			list.addTrailingDivider();
-		}
-		else
-		{
-			console.log('list.addTrailingDivider method not found');
 		}
 	}
 };
