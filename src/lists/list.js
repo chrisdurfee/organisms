@@ -538,6 +538,52 @@ export const List = Jot(
 	},
 
 	/**
+	 * This will add a trailing divider after the last item in the list.
+	 * Useful for showing the date of the oldest items when reaching the end.
+	 *
+	 * @public
+	 * @returns {void}
+	 */
+	addTrailingDivider()
+	{
+		// @ts-ignore
+		if (!this.rowDivider)
+		{
+			console.log('No rowDivider found');
+			return;
+		}
+
+		// @ts-ignore
+		const items = this.data.get('items') || [];
+		if (items.length === 0)
+		{
+			console.log('No items to add divider for');
+			return;
+		}
+
+		// Get the first (oldest) item - items are in DESC order (newest first)
+		// so the oldest item is at index 0
+		const oldestItem = items[0];
+		// @ts-ignore
+		const value = this.rowDivider.getValue(oldestItem);
+
+		console.log('Adding trailing divider with value:', value);
+
+		// Create the divider layout
+		// @ts-ignore
+		const dividerLayout = this.rowDivider.layout(value);
+		if (dividerLayout)
+		{
+			console.log('Prepending divider layout at top');
+			// Prepend the divider to the top of the list (before the oldest item)
+			// @ts-ignore
+			ChildHelper.prepend([dividerLayout], this.listContainer, this);
+		}
+		else
+		{
+			console.log('No divider layout created');
+		}
+	},	/**
 	 * Updates the hasItems flag based on current items length.
 	 *
 	 * @private
