@@ -30,7 +30,7 @@ export const ScrollableList = Atom((props) => (
 			loadMoreItems: props.loadMoreItems,
 			offset: props.offset,
 			limit: props.limit,
-			containerClass: props.containerClass ?? '',
+			containerClass: props.containerClass ?? 'flex flex-auto flex-col',
 			data: props.data
 		},
 		[
