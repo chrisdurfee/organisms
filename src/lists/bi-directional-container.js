@@ -140,7 +140,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
-	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection);
+	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache);
 
 	return Div(
 		{
@@ -160,13 +160,12 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 */
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
-				const list = parent[props.listCache];
-
 				/**
 				 * This will request the first fetch.
 				 */
 				handleScroll(null, parent, () =>
 				{
+					const list = parent[props.listCache];
 					list.reset();
 
 					// For 'up' direction (chat), ensure newestId is set from the loaded items
@@ -199,6 +198,9 @@ export const BiDirectionalContainer = Atom((props, children) =>
 						}, 0);
 					}
 				});
+
+				const list = parent[props.listCache];
+				console.log(list, parent, props.listCache);
 
 				/**
 				 * Add method to manually fetch newer items (useful for polling).

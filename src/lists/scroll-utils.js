@@ -371,15 +371,17 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
  * @param {PaginationTracker} tracker - The pagination tracker.
  * @param {function} fetchCallback - Function to fetch data.
  * @param {string} [direction='down'] - Scroll direction: 'down' for bottom loading, 'up' for top loading.
+ * @param {string} [listCache='list'] - The list cache name.
  * @returns {function} A scroll event handler function.
  */
-export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down') =>
+export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down', listCache = 'list') =>
 {
 	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
 	const isUpDirection = direction === 'up';
 
-	return (e, { list }, callBack) =>
+	return (e, parent, callBack) =>
 	{
+		const list = parent[listCache];
 		const metrics = getScrollMetrics(container);
 		if (canLoadFunc(metrics, tracker))
 		{

@@ -59,7 +59,7 @@ export const ScrollableContainer = Atom((props, children) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
-	const handleScroll = createScrollHandler(container, tracker, fetchCallback);
+	const handleScroll = createScrollHandler(container, tracker, fetchCallback, props.listCache);
 
 	return Div(
 		{
