@@ -26,6 +26,7 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  * @property {function} rowItem - Function to render each row item
  * @property {string} [cache] - The cache name to use
  * @property {boolean} [linkParent] - The parent data to link
+ * @property {boolean} [isDynamic] - Whether the list is dynamic
  *
  * @type {typeof Component}
  */
@@ -90,6 +91,11 @@ export const List = Jot(
 			parentValue = parentData.get('hasItems');
 			// @ts-ignore
 			this.data.link(parentData, 'hasItems');
+		}
+		// @ts-ignore
+		else if (this.isDynamic === true)
+		{
+			parentValue = undefined;
 		}
 
 		let hasItems = parentValue || null;

@@ -41,7 +41,8 @@ export const DynamicList = Atom((props) => (
 				class: props.class,
 				emptyState: props.emptyState || null,
 				rowItem: props.rowItem,
-                linkParent: props.linkParent ?? false
+                linkParent: props.linkParent ?? false,
+				isDynamic: true
 			})
 		]
 	)
