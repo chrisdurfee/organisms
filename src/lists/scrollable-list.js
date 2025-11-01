@@ -22,9 +22,12 @@ import { List } from "./list.js";
  * @property {boolean} [props.linkParent] - Whether to link the parent data.
  * @returns {object}
  */
-export const ScrollableList = Atom((props) => (
-	BiDirectionalContainer(
+export const ScrollableList = Atom((props) =>
+{
+	const cache = props.cache ?? 'list';
+	return BiDirectionalContainer(
 		{
+			listCache: cache,
 			scrollDirection: props.scrollDirection || 'down',
 			scrollContainer: props.scrollContainer,
 			loadMoreItems: props.loadMoreItems,
@@ -35,7 +38,7 @@ export const ScrollableList = Atom((props) => (
 		},
 		[
 			new List({
-				cache: props.cache ?? 'list',
+				cache,
 				key: props.key,
 				items: props.items || [],
 				divider: props.divider,
@@ -47,7 +50,7 @@ export const ScrollableList = Atom((props) => (
 				isDynamic: true
 			})
 		]
-	)
-));
+	);
+});
 
 export default ScrollableList;

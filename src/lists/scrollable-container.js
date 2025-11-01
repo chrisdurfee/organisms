@@ -41,6 +41,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
+ * @property {string} [props.listCache] - The list cache name to use.
  * @param {array} children - The child elements to render.
  * @returns {object}
  */
@@ -82,7 +83,7 @@ export const ScrollableContainer = Atom((props, children) =>
 				 */
 				handleScroll(null, parent, () =>
 				{
-					parent.list.reset();
+					parent[props.listCache].reset();
 				});
 			},
 

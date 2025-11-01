@@ -55,6 +55,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the container.
  * @property {string} [props.scrollDirection='down'] - Scroll direction: 'down' (scroll down for older) or 'up' (scroll up for older).
+ * @property {string} [props.listCache] - The list cache name to use.
  * @param {array} children - The child elements to render.
  * @returns {object}
  *
@@ -163,7 +164,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 */
 				handleScroll(null, parent, () =>
 				{
-					parent.list.reset();
+					parent[props.listCache].reset();
 
 					// For 'up' direction (chat), ensure newestId is set from the loaded items
 					if (scrollDirection === 'up')
