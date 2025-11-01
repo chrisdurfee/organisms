@@ -25,10 +25,11 @@ const setupResetCallback = (fetchCallback, tracker, list) =>
  * @param {Function} fetchCallback
  * @param {PaginationTracker} tracker
  * @param {object} parent
+ * @param {string} listCache
  */
-const addRefreshMethod = (fetchCallback, tracker, parent) =>
+const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
 {
-	parent.list.refresh = setupResetCallback(fetchCallback, tracker, parent.list);
+	parent[listCache].refresh = setupResetCallback(fetchCallback, tracker, parent[listCache]);
 };
 
 /**
@@ -157,20 +158,22 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
-				addRefreshMethod(fetchCallback, tracker, parent);
+				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
+
+				const list = parent[props.listCache];
 
 				/**
 				 * This will request the first fetch.
 				 */
 				handleScroll(null, parent, () =>
 				{
-					parent[props.listCache].reset();
+					list.reset();
 
 					// For 'up' direction (chat), ensure newestId is set from the loaded items
 					if (scrollDirection === 'up')
 					{
 						// Get the newest ID by detecting sort order
-						const items = parent.list.data?.items || parent.list.data?.rows || [];
+						const items = list.data?.items || list.data?.rows || [];
 						if (tracker.newestId === null)
 						{
 							const newestId = getNewestId(items);
@@ -204,7 +207,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * - 'down': prepends to top (for feeds)
 				 * - 'up': appends to bottom (for chat)
 				 */
-				parent.list.fetchNew = (shouldScroll = false) =>
+				list.fetchNew = (shouldScroll = false) =>
 				{
 					// Allow fetching if we're not already loading
 					// Don't require hasNewerData to be true (it starts as false)
@@ -219,12 +222,12 @@ export const BiDirectionalContainer = Atom((props, children) =>
 								if (scrollDirection === 'up')
 								{
 									// Chat: new messages at bottom
-									updateRows(rows, tracker, parent.list, null);
+									updateRows(rows, tracker, list, null);
 								}
 								else
 								{
 									// Feed: new items at top
-									prependRows(rows, tracker, parent.list, newestId);
+									prependRows(rows, tracker, list, newestId);
 								}
 
 								// Update newest ID tracker if available
@@ -237,7 +240,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 
                             if (shouldScroll && scrollDirection === 'up')
                             {
-                                parent.list.scrollToBottom();
+                                list.scrollToBottom();
                             }
 						});
 					}
@@ -247,7 +250,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * Add method to scroll to bottom (useful for chat interfaces).
 				 * This can be called after fetching new messages to keep user at bottom.
 				 */
-				parent.list.scrollToBottom = () =>
+				list.scrollToBottom = () =>
 				{
 					if (container === globalThis)
 					{
