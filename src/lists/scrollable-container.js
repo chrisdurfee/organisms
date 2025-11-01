@@ -25,10 +25,11 @@ const setupResetCallback = (fetchCallback, tracker, list) =>
  * @param {Function} fetchCallback
  * @param {PaginationTracker} tracker
  * @param {object} parent
+ * @param {string} listCache
  */
-const addRefreshMethod = (fetchCallback, tracker, parent) =>
+const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
 {
-	parent.list.refresh = setupResetCallback(fetchCallback, tracker, parent.list);
+	parent[listCache].refresh = setupResetCallback(fetchCallback, tracker, parent[listCache]);
 };
 
 /**
@@ -76,7 +77,7 @@ export const ScrollableContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
-				addRefreshMethod(fetchCallback, tracker, parent);
+				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
 				/**
 				 * This will request the first fetch.

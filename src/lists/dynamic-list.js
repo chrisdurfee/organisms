@@ -21,9 +21,12 @@ import { List } from "./list.js";
  * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
  */
-export const DynamicList = Atom((props) => (
-	DynamicContainer(
+export const DynamicList = Atom((props) =>
+{
+	const cache = props.cache ?? 'list';
+	return DynamicContainer(
 		{
+			listCache: cache,
 			scrollContainer: props.scrollContainer,
 			loadMoreItems: props.loadMoreItems,
 			offset: props.offset,
@@ -33,7 +36,7 @@ export const DynamicList = Atom((props) => (
 		},
 		[
 			new List({
-				cache: props.cache ?? 'list',
+				cache,
 				key: props.key,
 				items: props.items || [],
 				divider: props.divider,
@@ -45,7 +48,7 @@ export const DynamicList = Atom((props) => (
 				isDynamic: true
 			})
 		]
-	)
-));
+	);
+});
 
 export default DynamicList;
