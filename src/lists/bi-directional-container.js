@@ -200,7 +200,6 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				});
 
 				const list = parent[props.listCache];
-				console.log(list, parent, props.listCache);
 
 				/**
 				 * Add method to manually fetch newer items (useful for polling).
