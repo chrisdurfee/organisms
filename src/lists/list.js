@@ -581,7 +581,9 @@ export const List = Jot(
 			ChildHelper.prepend([dividerLayout], this.listContainer, this);
 		}
 
-	},	/**
+	},
+
+	/**
 	 * Updates the hasItems flag based on current items length.
 	 *
 	 * @private
