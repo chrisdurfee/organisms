@@ -43,7 +43,7 @@ export const ScrollableList = Atom((props) => (
 				class: props.class,
 				emptyState: props.emptyState || null,
 				rowItem: props.rowItem,
-				linkParent: props.linkParent ?? true
+				linkParent: props.linkParent ?? false
 			})
 		]
 	)
