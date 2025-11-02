@@ -410,12 +410,43 @@ export const List = Jot(
 	/**
 	 * This will mingle the new items with the old items.
 	 *
+	 * Extended: accepts an optional options object to control how updated
+	 * items are treated (moved to top/bottom or kept in place). Backwards
+	 * compatible: existing callers passing only (newItems, withDelete)
+	 * will continue to work.
+	 *
+	 * Options:
+	 *  - scrollDirection: 'prepend' | 'append' | null (used as a hint where
+	 *      newly fetched items are expected to be inserted)
+	 *  - moveUpdated: 'keep' | 'toScrollDirection' | function(row, oldIndex) => 'prepend'|'append'|'keep'
+	 *  - itemMoveKey: string name of a per-item flag (defaults to '__move')
+	 *      supported values on the item: 'prepend'|'append'|'keep'
+	 *
 	 * @public
 	 * @param {Array<Object>} newItems
 	 * @param {boolean} withDelete
+	 * @param {object} [options]
 	 * @returns {void}
+	 *
+	 * Examples:
+	 * // 1) Default (backwards compatible): diff and update in-place
+	 * this.mingle(newItems, true);
+	 *
+	 * // 2) If you fetched newer messages and want new items added to top:
+	 * this.mingle(newItems, true, { scrollDirection: 'prepend', moveUpdated: 'toScrollDirection' });
+	 *
+	 * // 3) Per-item control (server sets __move to 'prepend'|'append'|'keep'):
+	 * // each item can include: item.__move = 'prepend'; then call mingle normally
+	 * this.mingle(newItems, true);
+	 *
+	 * // 4) Custom logic: provide a function to decide per-row
+	 * this.mingle(newItems, true, { moveUpdated: (row, oldIndex) => {
+	 *     // return 'prepend'|'append'|'keep'
+	 *     return (row.item.shouldPromote) ? 'prepend' : 'keep';
+	 * }});
+	 *
 	 */
-	mingle(newItems, withDelete = false)
+	mingle(newItems, withDelete = false, options = {})
 	{
 		if (!Array.isArray(newItems))
 		{
@@ -434,9 +465,14 @@ export const List = Jot(
 		// @ts-ignore
 		const changes = DataHelper.diff(oldItems, newItems, this.key);
 
+		// Normalize options
+		const scrollDirection = options.scrollDirection || null; // 'prepend' | 'append' | null
+		const moveUpdated = options.moveUpdated || 'keep';
+		const itemMoveKey = options.itemMoveKey || '__move';
+
 		/**
 		 * We want to delete the items before adding and updating the
-		 * new items.
+		 * new items if requested.
 		 */
 		if (withDelete && changes.deletedItems.length > 0)
 		{
@@ -445,10 +481,111 @@ export const List = Jot(
 		}
 
 		/**
-		 * This will add or update the new rows.
+		 * Helper to decide move action for an updated row.
+		 * Returns 'prepend'|'append'|'keep'.
+		 */
+		const decideMoveAction = (row, oldIndex) =>
+		{
+			// Per-item explicit move flag has highest priority
+			if (row.item && typeof row.item === 'object' && row.item[itemMoveKey])
+			{
+				const v = row.item[itemMoveKey];
+				if (v === 'prepend' || v === 'append' || v === 'keep')
+				{
+					return v;
+				}
+			}
+
+			// If moveUpdated is a function, call it
+			if (typeof moveUpdated === 'function')
+			{
+				try {
+					const r = moveUpdated(row, oldIndex);
+					if (r === 'prepend' || r === 'append' || r === 'keep')
+					{
+						return r;
+					}
+				} catch (e) {
+					// swallow and fallthrough to defaults
+				}
+			}
+
+			// If configured to move updated to the scroll direction, do that
+			if (moveUpdated === 'toScrollDirection' && scrollDirection)
+			{
+				return scrollDirection; // 'prepend' or 'append'
+			}
+
+			// Default: keep in place
+			return 'keep';
+		};
+
+		/**
+		 * This will add/update/move the new rows according to decision rules.
 		 */
 		changes.changes.forEach((row) =>
 		{
+			// If row is newly added, place according to scrollDirection hint
+			if (row.status === 'added')
+			{
+				if (scrollDirection === 'prepend')
+				{
+					// @ts-ignore
+					this.prepend(row.item);
+				}
+				else
+				{
+					// default existing behavior is append
+					// @ts-ignore
+					this.append(row.item);
+				}
+				return;
+			}
+
+			// For updated rows, we may keep, replace in place, or move to top/bottom
+			if (row.status === 'updated')
+			{
+				// find current index
+				// @ts-ignore
+				const keyValue = row.item[this.key];
+				// @ts-ignore
+				const oldIndex = this.findIndexByKey(keyValue);
+				const action = decideMoveAction(row, oldIndex);
+
+				if (action === 'keep')
+				{
+					// update in place
+					// @ts-ignore
+					this.replace(row);
+					return;
+				}
+
+				// If action is prepend/append: remove existing (if present) and insert at requested location
+				if (action === 'prepend' || action === 'append')
+				{
+					// remove existing if present
+					if (oldIndex !== -1)
+					{
+						// use delete to remove DOM and data
+						// @ts-ignore
+						this.delete(keyValue);
+					}
+
+					if (action === 'prepend')
+					{
+						// @ts-ignore
+						this.prepend(row.item);
+					}
+					else
+					{
+						// @ts-ignore
+						this.append(row.item);
+					}
+					return;
+				}
+			}
+
+			// Fallback: call replace for other statuses (unchanged handled inside replace)
 			// @ts-ignore
 			this.replace(row);
 		});
