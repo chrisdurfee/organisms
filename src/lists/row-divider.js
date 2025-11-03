@@ -165,6 +165,7 @@ export class RowDivider
 	 * This will add a divider layout.
 	 *
 	 * @param {*} value
+	 * @param {Array<object>} children
 	 * @returns {void}
 	 */
 	addDivider(value, children)
@@ -182,6 +183,13 @@ export class RowDivider
 		}
 
 		const layout = this.layout(value);
+
+		// Mark dividers so they can be identified and skipped when finding row elements
+		if (layout && typeof layout === 'object')
+		{
+			layout['data-divider'] = 'true';
+		}
+
 		children.push(layout);
 
 		// remember the last divider value we added
