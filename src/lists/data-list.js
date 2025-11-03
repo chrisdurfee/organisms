@@ -19,9 +19,12 @@ import { List } from "./list.js";
  * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
  */
-export const DataList = Atom((props) => (
-	DataContainer(
+export const DataList = Atom((props) =>
+{
+	const cache = props.cache ?? 'list';
+	return DataContainer(
 		{
+			listCache: cache,
 			loadMoreItems: props.loadMoreItems,
 			offset: props.offset,
 			limit: props.limit,
@@ -30,7 +33,7 @@ export const DataList = Atom((props) => (
 		},
 		[
 			new List({
-				cache: props.cache ?? 'list',
+				cache,
 				key: props.key,
 				items: props.items || [],
 				divider: props.divider,
@@ -39,7 +42,7 @@ export const DataList = Atom((props) => (
 				rowItem: props.rowItem
 			})
 		]
-	)
-));
+	);
+});
 
 export default DataList;

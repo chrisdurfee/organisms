@@ -1,8 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
-import { DataHelper } from "../utils/data-helper.js";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, fetchAndRefresh, getNewestId, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
+import { createScrollHandler, fetchAndRefresh, getNewestId, prependRows, setupFetchCallback, setupFetchNewerCallback, updateRows } from "./scroll-utils.js";
 
 /**
  * This will reset the tracker and fetch new data.
@@ -223,46 +222,27 @@ export const BiDirectionalContainer = Atom((props, children) =>
 								// Direction determines where to add new items
 								if (scrollDirection === 'up')
 								{
-									// Chat: use mingle to handle adds/updates/deletes and place updated/added items at the bottom
-									// moveUpdated 'toScrollDirection' will promote updated messages to the append (bottom)
-									list.mingle(rows, true, { scrollDirection: 'append', moveUpdated: 'toScrollDirection' });
-									// Compute added count to update tracker (only count newly added items)
-									try
-									{
-										const current = list.getRows ? list.getRows() : [];
-										const key = list.key || 'id';
-										const diff = DataHelper.diff(current, rows, key);
-										const addedCount = diff.changes.filter(c => c.status === 'added').length;
-										if (addedCount > 0)
-										{
-											tracker.update(addedCount, null);
-										}
-									}
-									catch (e)
-									{
-										// ignore diff failures and skip tracker update
-									}
+									// Chat: new messages at bottom
+									updateRows(rows, tracker, list, null);
 								}
 								else
 								{
-									// Feed: new items at top - use mingle but keep newest tracking
-									list.mingle(rows, true, { scrollDirection: 'prepend', moveUpdated: 'toScrollDirection' });
-									// Update newest ID tracker if available
-									if (newestId !== null)
-									{
-										tracker.updateNewest(newestId);
-									}
+									// Feed: new items at top
+									prependRows(rows, tracker, list, newestId);
 								}
 
 								// Update newest ID tracker if available
-
+								if (newestId !== null)
+								{
+									tracker.updateNewest(newestId);
+								}
 							}
 							tracker.loadingNewer = false;
 
-							if (shouldScroll && scrollDirection === 'up')
-							{
-								list.scrollToBottom();
-							}
+                            if (shouldScroll && scrollDirection === 'up')
+                            {
+                                list.scrollToBottom();
+                            }
 						});
 					}
 				};

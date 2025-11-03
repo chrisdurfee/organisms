@@ -26,6 +26,8 @@ export class RowDivider
 
 		this.lastAppend = null;
 		this.lastPrepend = null;
+		// Track the last divider value that was actually added to prevent duplicates
+		this.lastDividerValue = null;
 	}
 
 	/**
@@ -37,6 +39,7 @@ export class RowDivider
 	{
 		this.lastAppend = null;
 		this.lastPrepend = null;
+		this.lastDividerValue = null;
 	}
 
 	/**
@@ -171,7 +174,17 @@ export class RowDivider
 			return;
 		}
 
+		// Avoid adding duplicate dividers for the same value
+		if (this.lastDividerValue !== null && this.compare(this.lastDividerValue, value) === false)
+		{
+			// same value as last divider -> skip
+			return;
+		}
+
 		const layout = this.layout(value);
 		children.push(layout);
+
+		// remember the last divider value we added
+		this.lastDividerValue = value;
 	}
 }

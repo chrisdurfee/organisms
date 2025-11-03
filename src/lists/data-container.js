@@ -25,10 +25,11 @@ const setupResetCallback = (fetchCallback, tracker, list) =>
  * @param {Function} fetchCallback
  * @param {PaginationTracker} tracker
  * @param {object} parent
+ * @param {string} listCache
  */
-const addRefreshMethod = (fetchCallback, tracker, parent) =>
+const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
 {
-	parent.list.refresh = setupResetCallback(fetchCallback, tracker, parent.list);
+	parent[listCache].refresh = setupResetCallback(fetchCallback, tracker, parent[listCache]);
 };
 
 /**
@@ -40,6 +41,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent) =>
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the list container.
+ * @property {string} [props.listCache] - The list cache name to use.
  * @param {array} children - The child elements to render.
  * @returns {object}
  */
@@ -64,9 +66,9 @@ export const DataContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
-				addRefreshMethod(fetchCallback, tracker, parent);
+				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
-				parent.list.refresh();
+				parent[props.listCache].refresh();
 			}
 		},
 		children
