@@ -176,7 +176,31 @@ export const List = Jot(
 		}
 
 		// @ts-ignore
-		return this.rowItem(item, index);
+		const rowLayout = this.rowItem(item, index);
+
+		// Add a data attribute with the item's key for reliable DOM element lookup
+		// This is needed because dividers and prepending can shift DOM positions
+		// @ts-ignore
+		if (rowLayout && this.key && item[this.key] !== undefined)
+		{
+			// @ts-ignore
+			const keyValue = String(item[this.key]);
+
+			// If rowLayout is a Component instance or doesn't have a tag property,
+			// wrap it in a div with the data-row-key attribute
+			if (rowLayout instanceof Component || !rowLayout.tag)
+			{
+				return Div({
+					'data-row-key': keyValue
+				}, [rowLayout]);
+			}
+
+			// Otherwise add the attribute directly to the layout object
+			// @ts-ignore
+			rowLayout['data-row-key'] = keyValue;
+		}
+
+		return rowLayout;
 	},
 
 	/**
@@ -243,8 +267,10 @@ export const List = Jot(
 
 		// @ts-ignore
 		this.data.set(`items[${index}]`, item);
+
+		// Find the actual DOM element by its key attribute
 		// @ts-ignore
-		const oldRow = ChildHelper.get(this.listContainer, index);
+		const oldRow = this.findRowElementByKey(keyValue);
 		// @ts-ignore
 		const layout = this.row(item, index);
 		if (oldRow && layout)
@@ -611,5 +637,44 @@ export const List = Jot(
 		const items = this.data.get('items') || [];
 		//@ts-ignore
 		return items.findIndex((item) => item && item[this.key] === keyValue);
+	},
+
+	/**
+	 * Finds a row DOM element by its key value.
+	 * This is more reliable than finding by index, especially after prepending
+	 * or when dividers are present.
+	 *
+	 * @private
+	 * @param {*} keyValue - The key value to find
+	 * @returns {HTMLElement|null} The DOM element, or null if not found
+	 */
+	findRowElementByKey(keyValue)
+	{
+		// @ts-ignore
+		if (!this.listContainer)
+		{
+			return null;
+		}
+
+		// @ts-ignore
+		const children = Array.from(this.listContainer.children);
+		const keyString = String(keyValue);
+
+		for (const child of children)
+		{
+			// Skip dividers
+			if (child.hasAttribute && child.hasAttribute('data-divider'))
+			{
+				continue;
+			}
+
+			// Check if this row has the matching key
+			if (child.hasAttribute && child.getAttribute('data-row-key') === keyString)
+			{
+				return child;
+			}
+		}
+
+		return null;
 	}
 });
