@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, fetchAndRefresh, getNewestId, prependRows, setupFetchCallback, setupFetchNewerCallback, updateRows } from "./scroll-utils.js";
+import { createScrollHandler, fetchAndRefresh, getNewestId, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
 
 /**
  * This will reset the tracker and fetch new data.
@@ -223,12 +223,14 @@ export const BiDirectionalContainer = Atom((props, children) =>
 								if (scrollDirection === 'up')
 								{
 									// Chat: new messages at bottom
-									updateRows(rows, tracker, list, null);
+									// Use append instead of updateRows to avoid affecting pagination tracker
+									list.append(rows);
 								}
 								else
 								{
 									// Feed: new items at top
-									prependRows(rows, tracker, list, newestId);
+									// Use prepend instead of prependRows to avoid affecting pagination tracker
+									list.prepend(rows);
 								}
 
 								// Update newest ID tracker if available
