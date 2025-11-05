@@ -28,6 +28,8 @@ export class RowDivider
 		this.lastPrepend = null;
 		// Track the last divider value that was actually added to prevent duplicates
 		this.lastDividerValue = null;
+		// Track the boundary value when prepending to avoid duplicate dividers at the boundary
+		this.prependBoundary = null;
 	}
 
 	/**
@@ -40,6 +42,7 @@ export class RowDivider
 		this.lastAppend = null;
 		this.lastPrepend = null;
 		this.lastDividerValue = null;
+		this.prependBoundary = null;
 	}
 
 	/**
@@ -53,7 +56,19 @@ export class RowDivider
 	{
 		if (firstItem)
 		{
-			this.lastPrepend = this.getValue(firstItem);
+			const value = this.getValue(firstItem);
+			this.lastPrepend = value;
+			// Store the boundary separately to prevent duplicate dividers
+			// when prepending items that transition back to the existing date
+			this.prependBoundary = value;
+			// Clear lastDividerValue when starting a new prepend batch
+			// This prevents stale values from previous operations causing issues
+			this.lastDividerValue = null;
+		}
+		else
+		{
+			// Clear prepend boundary if no first item
+			this.prependBoundary = null;
 		}
 	}
 
@@ -83,6 +98,9 @@ export class RowDivider
 	 */
 	append(item, children)
 	{
+		// Clear prepend boundary when appending (no longer prepending)
+		this.prependBoundary = null;
+
 		const value = this.getValue(item);
 		const first = this.setFirstValues(value);
 
@@ -90,13 +108,22 @@ export class RowDivider
 		if (first && !this.skipFirst)
 		{
 			this.addDivider(value, children);
+			return;
+		}
+
+		// Skip adding divider on first item when skipFirst is true
+		if (first)
+		{
+			return;
 		}
 
 		if (this.compare(this.lastAppend, value))
 		{
 			this.addDivider(value, children);
-			this.lastAppend = value;
 		}
+
+		// Always update lastAppend to track the current date boundary
+		this.lastAppend = value;
 	}
 
 	/**
@@ -175,10 +202,18 @@ export class RowDivider
 			return;
 		}
 
-		// Avoid adding duplicate dividers for the same value
+		// Avoid adding duplicate dividers for the same value as last divider
 		if (this.lastDividerValue !== null && this.compare(this.lastDividerValue, value) === false)
 		{
 			// same value as last divider -> skip
+			return;
+		}
+
+		// When prepending, avoid adding a divider that matches the boundary
+		// (the boundary represents an existing divider in the DOM)
+		if (this.prependBoundary !== null && this.compare(this.prependBoundary, value) === false)
+		{
+			// same value as prepend boundary -> skip (divider already exists)
 			return;
 		}
 
