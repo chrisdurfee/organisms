@@ -238,9 +238,10 @@ export const List = Jot(
 	 *
 	 * @protected
 	 * @param {object} row
+	 * @param {boolean} append
 	 * @returns {void}
 	 */
-	replace(row)
+	replace(row, append = true)
 	{
 		if (row.status === 'unchanged')
 		{
@@ -251,8 +252,15 @@ export const List = Jot(
 		const item = row.item;
 		if (row.status === 'added')
 		{
+			if (append)
+			{
+				// @ts-ignore
+				this.append(item);
+				return;
+			}
+
 			// @ts-ignore
-			this.append(item);
+			this.prepend(item);
 			return;
 		}
 
@@ -480,6 +488,92 @@ export const List = Jot(
 		});
 
 		// Update hasItems after mingling
+		// @ts-ignore
+		this.updateHasItems();
+	},
+
+	/**
+	 * This will mingle the new items with the old items.
+	 *
+	 * @public
+	 * @param {Array<Object>} newItems
+	 * @param {boolean} append
+	 * @param {boolean} deleteIfFound
+	 * @returns {void}
+	 */
+	merge(newItems, append = true, deleteIfFound = false)
+	{
+		if (!Array.isArray(newItems))
+		{
+			return;
+		}
+
+		newItems = clone(newItems);
+
+		// @ts-ignore
+		const oldItems = this.data.get('items') || [];
+
+		/**
+		 * This will diff the old and new items to determine what has
+		 * been added, updated, or deleted.
+		 */
+		// @ts-ignore
+		const changes = DataHelper.diff(oldItems, newItems, this.key);
+
+		/**
+		 * This will add or update the new rows.
+		 */
+		changes.changes.forEach((row) =>
+		{
+			if (deleteIfFound)
+			{
+				// @ts-ignore
+				this.remove([row.item]);
+				row.status = 'added';
+			}
+
+			// @ts-ignore
+			this.replace(row, append);
+		});
+
+		// Update hasItems after mingling
+		// @ts-ignore
+		this.updateHasItems();
+	},
+
+	/**
+	 * This will modify existing items in the list with updated data.
+	 *
+	 * @public
+	 * @param {Array<Object>} updatedItems
+	 * @param {boolean} addMissing
+	 * @returns {void}
+	 */
+	modify(updatedItems, addMissing = false)
+	{
+		if (!Array.isArray(updatedItems))
+		{
+			return;
+		}
+
+		// @ts-ignore
+		const updatingItems = clone(updatedItems);
+
+		// @ts-ignore
+		const oldItems = this.data.get('items') || [];
+		// @ts-ignore
+		const changes = DataHelper.modify(updatingItems, oldItems, this.key, addMissing);
+
+		/**
+		 * This will add or update the new rows.
+		 */
+		changes.forEach((row) =>
+		{
+			// @ts-ignore
+			this.replace(row);
+		});
+
+		// Update hasItems after modifying
 		// @ts-ignore
 		this.updateHasItems();
 	},

@@ -77,6 +77,49 @@ export class DataHelper
 	}
 
 	/**
+	 * Modifies an array of objects by updating existing items based on a specified key.
+	 *
+	 * @param {Array<Object>} newArray - The array containing updated items.
+	 * @param {Array<Object>} oldArray - The original array of items.
+	 * @param {string} key - The key used to identify items.
+	 * @param {boolean} [addMissing=false] - Whether to include items that are in newArray but not in oldArray.
+	 * @returns {Array<Object>} An array of items that were modified or added.
+	 */
+	static modify(newArray, oldArray, key, addMissing = false)
+	{
+		const changes = [];
+
+		// @ts-ignore
+		const oldItems = DataHelper.arrayToMap(oldArray, key);
+		const length = newArray.length;
+		for (let i = 0; i < length; i++)
+		{
+			let item = newArray[i];
+			// @ts-ignore
+			const id = item[key] ?? null;
+			if (!oldItems.has(item[id]))
+			{
+				if (!addMissing)
+				{
+					continue;
+				}
+
+				changes.push(Item(i, item, 'added'));
+				continue;
+			}
+
+			/**
+			 * This will modify the existing item with new properties.
+			 */
+			const oldItem = oldItems.get(item[id]).item;
+			item = { ...oldItem, ...item };
+
+			changes.push(Item(i, item, 'updated'));
+		}
+		return changes;
+	}
+
+	/**
 	 * Converts an array of objects into a Map keyed by the specified property.
 	 * Each value in the Map is an object containing the item and its index in the array.
 	 *
