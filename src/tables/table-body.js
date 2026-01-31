@@ -196,9 +196,9 @@ export class TableBody extends List
 	 * @public
 	 * @return {void}
 	 */
-	destroy()
+	beforeDestroy()
 	{
 		// @ts-ignore
-		super.destroy();
+		super.beforeDestroy();
 	}
 };

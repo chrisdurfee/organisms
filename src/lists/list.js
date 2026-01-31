@@ -123,6 +123,8 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		this.data.hasItems = this.defaultHasItemValue;
+		// @ts-ignore
+		this.listContainer = null;
 	},
 
 	/**
