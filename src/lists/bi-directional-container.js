@@ -241,10 +241,10 @@ export const BiDirectionalContainer = Atom((props, children) =>
 							}
 							tracker.loadingNewer = false;
 
-                            if (shouldScroll && scrollDirection === 'up')
-                            {
-                                list.scrollToBottom();
-                            }
+							if (shouldScroll && scrollDirection === 'up')
+							{
+								list.scrollToBottom();
+							}
 						});
 					}
 				};
