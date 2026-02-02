@@ -71,14 +71,47 @@ export const List = Jot(
 	before()
 	{
 		// @ts-ignore
-		this.linkParentData();
+		this.setupHasItems();
+	},
+
+	/**
+	 * This will set up the hasItems value.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	setupHasItems()
+	{
+		// @ts-ignore
+		// If we have already set the default, skip it
+		if (this.defaultHasItemValue)
+		{
+			return;
+		}
+
+		// @ts-ignore
+		let parentValue = this.linkParentData();
+
+		let hasItems = parentValue || null;
+		if (parentValue !== undefined)
+		{
+			// @ts-ignore
+			const items = this.items || [];
+			// @ts-ignore
+			hasItems = (Array.isArray(items) && items.length > 0);
+			// @ts-ignore
+			this.data.set('hasItems', hasItems);
+		}
+
+		// @ts-ignore
+		this.defaultHasItemValue = hasItems;
 	},
 
 	/**
 	 * This will link the parent data to the list.
 	 *
 	 * @protected
-	 * @returns {void}
+	 * @return {boolean}
 	 */
 	linkParentData()
 	{
@@ -97,20 +130,34 @@ export const List = Jot(
 		{
 			parentValue = undefined;
 		}
+		return parentValue;
+	},
 
-		let hasItems = parentValue || null;
-		if (parentValue !== undefined)
+	/**
+	 * This will check if we have added items that should persist.
+	 *
+	 * @protected
+	 * @return {void}
+	 */
+	checkHasAddedItems()
+	{
+		// @ts-ignore
+		if (this.defaultHasItemValue === true)
 		{
-			// @ts-ignore
-			const items = this.items || [];
-			// @ts-ignore
-			hasItems = (Array.isArray(items) && items.length > 0);
-			// @ts-ignore
-			this.data.set('hasItems', hasItems);
+			return;
 		}
 
 		// @ts-ignore
-		this.defaultHasItemValue = hasItems;
+		const items = this.data.get('items') || [];
+
+		// Determine if we have added items that should persist
+		// @ts-ignore
+		const hasAddedItems = (items.length > 0 && this.persist === true);
+		if (hasAddedItems)
+		{
+			// @ts-ignore
+			this.defaultHasItemValue = true;
+		}
 	},
 
 	/**
@@ -121,6 +168,10 @@ export const List = Jot(
 	 */
 	destroy()
 	{
+		// @ts-ignore
+		this.checkHasAddedItems();
+
+		// If we added items to a linked parent, reset hasItems to default
 		// @ts-ignore
 		this.data.hasItems = this.defaultHasItemValue;
 	},

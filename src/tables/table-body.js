@@ -190,16 +190,4 @@ export class TableBody extends List
 			for: ['items', rowCallBack]
 		});
 	}
-
-	/**
-	 * Called when the component is destroyed.
-	 *
-	 * @public
-	 * @return {void}
-	 */
-	beforeDestroy()
-	{
-		// @ts-ignore
-		super.beforeDestroy();
-	}
 };
