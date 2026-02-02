@@ -182,7 +182,8 @@ export class TableBody extends List
 		return Tbody({
 			onCreated: (ele) =>
 			{
-				this.listContainer = ele;
+				// @ts-ignore
+				this.cacheEle(ele, 'listContainer');
 			},
 			// @ts-ignore
 			class: `tbody ${this.class || ''}`,

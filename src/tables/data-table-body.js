@@ -99,7 +99,8 @@ export class DataTableBody extends TableBody
 			 */
 			onCreated: (ele, parent) =>
 			{
-				this.listContainer = ele;
+				// @ts-ignore
+				this.cacheEle(ele, 'listContainer');
 				this.refresh();
 			},
 

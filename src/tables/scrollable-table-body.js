@@ -127,7 +127,8 @@ export class ScrollableTableBody extends TableBody
 			 */
 			onCreated: (ele, parent) =>
 			{
-				this.listContainer = ele;
+				// @ts-ignore
+				this.cacheEle(ele, 'listContainer');
 
 				handleScroll(null, parent, () =>
 				{
