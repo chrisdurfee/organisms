@@ -86,6 +86,8 @@ export const List = Jot(
 		// If we have already set the default, skip it
 		if (this.defaultHasItemValue)
 		{
+			// @ts-ignore
+			this.data.set('hasItems', true);
 			return;
 		}
 
@@ -95,12 +97,22 @@ export const List = Jot(
 		let hasItems = parentValue || null;
 		if (parentValue !== undefined)
 		{
-			// @ts-ignore
-			const items = this.items || [];
-			// @ts-ignore
-			hasItems = (Array.isArray(items) && items.length > 0);
-			// @ts-ignore
-			this.data.set('hasItems', hasItems);
+			/**
+			 * If parent already has items (hasItems === true), respect that value.
+			 * This prevents empty state flash when navigating back to a list
+			 * that was previously populated via data linking.
+			 */
+			if (parentValue === true)
+			{
+				hasItems = true;
+			}
+			else
+			{
+				// @ts-ignore
+				const items = this.items || [];
+				// @ts-ignore
+				hasItems = (Array.isArray(items) && items.length > 0);
+			}
 		}
 
 		// @ts-ignore
