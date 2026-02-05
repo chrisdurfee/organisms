@@ -134,6 +134,7 @@ export class RowDivider
 	 */
 	getValue(item)
 	{
+		// @ts-ignore
 		return item[this.itemProperty] ?? null;
 	}
 
