@@ -166,6 +166,7 @@ export class NavLink extends Component
      */
     update(selected)
     {
+        // @ts-ignore
         this.state.selected = selected;
     }
 }
