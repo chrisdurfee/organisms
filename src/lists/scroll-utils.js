@@ -138,7 +138,7 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
  * @param {PaginationTracker} tracker
  * @param {object} list
  * @param {string|null} lastCursor - The last cursor value.
- * @param {HTMLElement|globalThis} container - The scroll container.
+ * @param {HTMLElement|globalThis|null} [container] - The scroll container.
  * @returns {void}
  */
 export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, container = null) =>

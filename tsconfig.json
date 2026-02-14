@@ -3,6 +3,7 @@
         "allowJs": true, // Allows TypeScript to process JS files
         "checkJs": true, // Enables type checking for JS files, based on your JSDoc comments
         "emitDeclarationOnly": true, // Instructs the compiler to only emit `.d.ts` declaration files
+        "noImplicitAny": false,
         "declaration": true, // Enables generation of declaration files
         "declarationDir": "./dist/types",
         "rootDir": "./src",

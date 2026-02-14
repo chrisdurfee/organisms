@@ -28,7 +28,7 @@ const clone = (data) => JSON.parse(JSON.stringify(data));
  * @property {boolean} [linkParent] - The parent data to link
  * @property {boolean} [isDynamic] - Whether the list is dynamic
  *
- * @type {typeof Component}
+ * @returns {Component}
  */
 export const List = Jot(
 {
@@ -123,7 +123,7 @@ export const List = Jot(
 	 * This will link the parent data to the list.
 	 *
 	 * @protected
-	 * @return {boolean}
+	 * @returns {*}
 	 */
 	linkParentData()
 	{
@@ -140,7 +140,7 @@ export const List = Jot(
 		// @ts-ignore
 		else if (this.isDynamic === true)
 		{
-			parentValue = undefined;
+			return undefined;
 		}
 		return parentValue;
 	},
@@ -149,7 +149,7 @@ export const List = Jot(
 	 * This will check if we have added items that should persist.
 	 *
 	 * @protected
-	 * @return {void}
+	 * @returns {void}
 	 */
 	checkHasAddedItems()
 	{
@@ -176,7 +176,7 @@ export const List = Jot(
 	 * Called when the component is destroyed.
 	 *
 	 * @public
-	 * @return {void}
+	 * @returns {void}
 	 */
 	destroy()
 	{
@@ -231,8 +231,10 @@ export const List = Jot(
 			return null;
 		}
 
+		// Only add dividers via the for: directive if we're not in dynamic mode.
+		// Dynamic lists (prepend/append) manage dividers separately to prevent duplicates.
 		// @ts-ignore
-		if (this.rowDivider && children)
+		if (this.rowDivider && children && this.isDynamic !== true)
 		{
 			// @ts-ignore
 			this.rowDivider.append(item, children);
@@ -285,10 +287,14 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.delete(`items[${index}]`);
 		// @ts-ignore
-		const rowElement = ChildHelper.get(this.listContainer, index);
-		if (rowElement)
+		if (this.listContainer)
 		{
-			ChildHelper.remove(rowElement);
+			// @ts-ignore
+			const rowElement = ChildHelper.get(this.listContainer, index);
+			if (rowElement)
+			{
+				ChildHelper.remove(rowElement);
+			}
 		}
 
 		// Update hasItems after deletion
@@ -430,6 +436,8 @@ export const List = Jot(
 		this.data.set('items', []);
 		// @ts-ignore
 		this.data.set('hasItems', false);
+		// @ts-ignore
+		this.hasTrailingDivider = false;
 
 		// @ts-ignore
 		if (this.rowDivider)
@@ -497,7 +505,8 @@ export const List = Jot(
 		this.updateHasItems();
 
 		// This will batch push all the rows.
-		if (rows.length > 0)
+		// @ts-ignore
+		if (rows.length > 0 && this.listContainer)
 		{
 			// @ts-ignore
 			ChildHelper.append(rows, this.listContainer, this);
@@ -719,7 +728,8 @@ export const List = Jot(
 		// @ts-ignore
 		this.updateHasItems();
 
-		if (rows.length > 0)
+		// @ts-ignore
+		if (rows.length > 0 && this.listContainer)
 		{
 			// @ts-ignore
 			ChildHelper.prepend(rows, this.listContainer, this);
@@ -741,6 +751,13 @@ export const List = Jot(
 			return;
 		}
 
+		// Prevent adding multiple trailing dividers
+		// @ts-ignore
+		if (this.hasTrailingDivider)
+		{
+			return;
+		}
+
 		// @ts-ignore
 		const items = this.data.get('items') || [];
 		if (items.length === 0)
@@ -757,11 +774,21 @@ export const List = Jot(
 		// Create the divider layout
 		// @ts-ignore
 		const dividerLayout = this.rowDivider.layout(value);
-		if (dividerLayout)
+		// @ts-ignore
+		if (dividerLayout && this.listContainer)
 		{
+			// Mark dividers so they can be identified
+			if (typeof dividerLayout === 'object')
+			{
+				dividerLayout['data-divider'] = 'true';
+			}
+
 			// Prepend the divider to the top of the list (before the oldest item)
 			// @ts-ignore
 			ChildHelper.prepend([dividerLayout], this.listContainer, this);
+
+			// @ts-ignore
+			this.hasTrailingDivider = true;
 		}
 
 	},
