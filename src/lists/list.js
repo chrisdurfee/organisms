@@ -461,7 +461,7 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.set('items', []);
 		// @ts-ignore
-		this.data.set('hasItems', false);
+		this.data.set('hasItems', null);
 		// @ts-ignore
 		this.hasTrailingDivider = false;
 

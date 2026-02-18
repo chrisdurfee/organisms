@@ -126,6 +126,7 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
 	else
 	{
 		tracker.hasMoreData = false;
+		list.data.set('hasItems', false);
 	}
 };
 
@@ -194,6 +195,7 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 	else
 	{
 		tracker.hasMoreData = false;
+		list.data.set('hasItems', false);
 
 		// Add a trailing divider to show the date of the oldest items
 		if (list.addTrailingDivider)
