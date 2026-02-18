@@ -31,7 +31,7 @@ const clone = (data) => {
  * @param {object} props
  * @property {string} class - The class to add to the list
  * @property {string} key - The key to use to identify the items
- * @property {array} [items] - The items
+ * @property {Array<object>} [items] - The items
  * @property {object} [emptyState] - The empty state component to show when no items
  * @property {object} [divider] - The divider configuration
  * @property {function} rowItem - Function to render each row item

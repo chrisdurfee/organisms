@@ -11,7 +11,7 @@ import { SkeletonTableRow } from './skeleton-table-row.js';
  * @param {object} props
  * @property {string} class - The class to add to the list
  * @property {string} key - The key to use to identify the items
- * @property {array} [items] - The items
+ * @property {Array<object>} [items] - The items
  * @property {boolean|object} [skeleton] - Skeleton configuration. Can be true for default or object with { number: 5, row: customRowFunction }
  * @property {number} [columnCount] - Number of columns for skeleton rows (auto-detected from headers if not provided)
  *
@@ -49,7 +49,7 @@ export class TableBody extends List
 	/**
 	 * Generates skeleton rows for the table.
 	 *
-	 * @returns {Array}
+	 * @returns {Array<object>}
 	 */
 	generateSkeletonRows()
 	{
@@ -106,7 +106,7 @@ export class TableBody extends List
 	/**
 	 * Override setRows to remove skeleton when real data arrives
 	 *
-	 * @param {array} rows
+	 * @param {Array<object>} rows
 	 * @returns {void}
 	 */
 	setRows(rows)
@@ -120,7 +120,7 @@ export class TableBody extends List
 	/**
 	 * Override append to remove skeleton when real data arrives
 	 *
-	 * @param {array|object} items
+	 * @param {Array<object>|object} items
 	 * @returns {void}
 	 */
 	append(items)
@@ -134,7 +134,7 @@ export class TableBody extends List
 	/**
 	 * Override prepend to remove skeleton when real data arrives
 	 *
-	 * @param {array|object} items
+	 * @param {Array<object>|object} items
 	 * @returns {void}
 	 */
 	prepend(items)

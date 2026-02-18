@@ -13,7 +13,7 @@ import { TableBody } from './table-body.js';
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.class] - The class to add to the list.
  * @property {string} [props.key] - The key to use to identify the items.
- * @property {array} [props.items] - The initial items.
+ * @property {Array<object>} [props.items] - The initial items.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.tableData] - The data object containing the xhr method.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
