@@ -39,30 +39,32 @@ export class DataHelper
 		const deletedItems = [];
 
 		// Process new array to determine status of each item
-		newArray.forEach((newItem, newIndex) =>
+		const newLength = newArray.length;
+		for (let i = 0; i < newLength; i++)
 		{
+			const newItem = newArray[i];
 			const keyValue = newItem[key];
 			if (!oldItemsMap.has(keyValue))
 			{
 				// Item is added
-				changes.push(Item(newIndex, newItem, 'added'));
-				return;
+				changes.push(Item(i, newItem, 'added'));
+				continue;
 			}
 
 			const { item: oldItem } = oldItemsMap.get(keyValue);
 			if (!this.deepEqual(oldItem, newItem))
 			{
 				// Item is updated
-				changes.push(Item(newIndex, newItem, 'updated'));
-				return;
+				changes.push(Item(i, newItem, 'updated'));
+				continue;
 			}
 
 			// Item is unchanged
-			changes.push(Item(newIndex, newItem, 'unchanged'));
+			changes.push(Item(i, newItem, 'unchanged'));
 
 			// Remove from oldItemsMap to identify deletions later
 			oldItemsMap.delete(keyValue);
-		});
+		}
 
 		// Remaining items in oldItemsMap are deleted
 		oldItemsMap.forEach(({ item: oldItem }) =>
@@ -131,15 +133,18 @@ export class DataHelper
 	static arrayToMap(array, key)
 	{
 		const map = new Map();
-		array.forEach((item, index) =>
+		const length = array.length;
+		for (let i = 0; i < length; i++)
 		{
-			map.set(item[key], { item, index });
-		});
+			const item = array[i];
+			map.set(item[key], { item, index: i });
+		}
 		return map;
 	}
 
 	/**
 	 * Performs a deep comparison between two objects.
+	 * Optimized with early exits for common cases.
 	 *
 	 * @param {Object} obj1 - The first object to compare.
 	 * @param {Object} obj2 - The second object to compare.
@@ -148,8 +153,10 @@ export class DataHelper
 	 */
 	static deepEqual(obj1, obj2)
 	{
+		// Fast path: identical references
 		if (obj1 === obj2) return true;
 
+		// Fast path: type check and null check
 		if (
 			typeof obj1 !== 'object' ||
 			obj1 === null ||
@@ -163,22 +170,28 @@ export class DataHelper
 		const keys1 = Object.keys(obj1);
 		const keys2 = Object.keys(obj2);
 
-		// Different number of properties
+		// Fast path: different number of properties
 		if (keys1.length !== keys2.length)
 		{
-			return false
+			return false;
 		}
 
-		for (const key of keys1)
+		// Optimized loop for property comparison
+		const length = keys1.length;
+		for (let i = 0; i < length; i++)
 		{
-			if (!keys2.includes(key))
+			const key = keys1[i];
+
+			// Fast path: check if key exists in obj2
+			if (!obj2.hasOwnProperty(key))
 			{
 				return false;
 			}
 
+			// Recursive comparison
 			if (!this.deepEqual(obj1[key], obj2[key]))
 			{
-				return false
+				return false;
 			}
 		}
 

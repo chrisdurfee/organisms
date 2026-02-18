@@ -90,6 +90,7 @@ export class ScrollableTableBody extends TableBody
 	 */
 	refresh()
 	{
+		// @ts-ignore
 		fetchAndRefresh(this.fetchCallback, this.tracker, this);
 	}
 

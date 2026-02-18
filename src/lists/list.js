@@ -5,12 +5,23 @@ import { DataHelper } from '../utils/data-helper.js';
 import { RowDivider } from './row-divider.js';
 
 /**
- * This will clone the data.
+ * This will clone the data using shallow copy for better performance.
+ * For array of objects, creates new array with shallow copies of each object.
  *
  * @param {*} data
  * @returns {*}
  */
-const clone = (data) => JSON.parse(JSON.stringify(data));
+const clone = (data) => {
+	if (Array.isArray(data)) {
+		return data.map(item => {
+			if (item && typeof item === 'object') {
+				return { ...item };
+			}
+			return item;
+		});
+	}
+	return data;
+};
 
 /**
  * List
@@ -45,6 +56,10 @@ export const List = Jot(
 			// @ts-ignore
 			this.rowDivider = new RowDivider({ ...this.divider });
 		}
+
+		// Initialize element cache for O(1) lookups by key
+		// @ts-ignore
+		this.elementCache = new Map();
 	},
 
 	/**
@@ -255,9 +270,11 @@ export const List = Jot(
 			// wrap it in a div with the data-row-key attribute
 			if (rowLayout instanceof Component || !rowLayout.tag)
 			{
-				return Div({
+				const wrapper = Div({
 					'data-row-key': keyValue
 				}, [rowLayout]);
+				// Store in cache will happen after DOM render
+				return wrapper;
 			}
 
 			// Otherwise add the attribute directly to the layout object
@@ -295,6 +312,13 @@ export const List = Jot(
 			{
 				ChildHelper.remove(rowElement);
 			}
+		}
+
+		// Remove from element cache
+		// @ts-ignore
+		if (this.elementCache) {
+			// @ts-ignore
+			this.elementCache.delete(String(keyValue));
 		}
 
 		// Update hasItems after deletion
@@ -373,11 +397,13 @@ export const List = Jot(
 		/**
 		 * This will get the deleted rows.
 		 */
-		items.forEach((item) =>
+		const length = items.length;
+		for (let i = 0; i < length; i++)
 		{
+			const item = items[i];
 			// @ts-ignore
 			this.delete(item[this.key]);
-		});
+		}
 
 		// Update hasItems after removal
 		// @ts-ignore
@@ -439,6 +465,13 @@ export const List = Jot(
 		// @ts-ignore
 		this.hasTrailingDivider = false;
 
+		// Clear element cache
+		// @ts-ignore
+		if (this.elementCache) {
+			// @ts-ignore
+			this.elementCache.clear();
+		}
+
 		// @ts-ignore
 		if (this.rowDivider)
 		{
@@ -473,9 +506,14 @@ export const List = Jot(
 		 */
 		const rows = [];
 		// @ts-ignore
-		let lastIndex = this.data.items.length - 1;
-		items.forEach((item) =>
+		const existingItems = this.data.get('items') || [];
+		const startIndex = existingItems.length;
+		const length = items.length;
+
+		// Build rows using traditional for loop for better performance
+		for (let i = 0; i < length; i++)
 		{
+			const item = items[i];
 			// @ts-ignore
 			if (this.rowDivider)
 			{
@@ -487,18 +525,18 @@ export const List = Jot(
 			 * This will build the new rows that will be appended.
 			 */
 			// @ts-ignore
-			const rowElement = this.row(item, lastIndex + 1);
+			const rowElement = this.row(item, startIndex + i);
 			if (rowElement)
 			{
 				rows.push(rowElement);
 			}
+		}
 
-			/**
-			 * This will silently add the new rows without re-rendering the entire list.
-			 */
-			// @ts-ignore
-			this.data.set(`items[${++lastIndex}]`, item);
-		});
+		// Batch update all items at once for better performance
+		// @ts-ignore
+		const newItems = existingItems.concat(items);
+		// @ts-ignore
+		this.data.set('items', newItems);
 
 		// Update hasItems after appending
 		// @ts-ignore
@@ -553,11 +591,13 @@ export const List = Jot(
 		/**
 		 * This will add or update the new rows.
 		 */
-		changes.changes.forEach((row) =>
+		const changesLength = changes.changes.length;
+		for (let i = 0; i < changesLength; i++)
 		{
+			const row = changes.changes[i];
 			// @ts-ignore
 			this.replace(row);
-		});
+		}
 
 		// Update hasItems after mingling
 		// @ts-ignore
@@ -595,8 +635,10 @@ export const List = Jot(
 		/**
 		 * This will add or update the new rows.
 		 */
-		changes.changes.forEach((row) =>
+		const changesLength = changes.changes.length;
+		for (let i = 0; i < changesLength; i++)
 		{
+			const row = changes.changes[i];
 			if (deleteIfFound)
 			{
 				// @ts-ignore
@@ -606,7 +648,7 @@ export const List = Jot(
 
 			// @ts-ignore
 			this.replace(row, append);
-		});
+		}
 
 		// Update hasItems after mingling
 		// @ts-ignore
@@ -639,11 +681,13 @@ export const List = Jot(
 		/**
 		 * This will add or update the new rows.
 		 */
-		changes.forEach((row) =>
+		const changesLength = changes.length;
+		for (let i = 0; i < changesLength; i++)
 		{
+			const row = changes[i];
 			// @ts-ignore
 			this.replace(row);
-		});
+		}
 
 		// Update hasItems after modifying
 		// @ts-ignore
@@ -689,8 +733,12 @@ export const List = Jot(
 		 */
 		const rows = [];
 		const reverseItems = items.reverse();
-		reverseItems.forEach((item) =>
+		const reverseLength = reverseItems.length;
+
+		// Build rows using traditional for loop for better performance
+		for (let i = 0; i < reverseLength; i++)
 		{
+			const item = reverseItems[i];
 			// @ts-ignore
 			if (this.rowDivider)
 			{
@@ -707,7 +755,7 @@ export const List = Jot(
 			{
 				rows.push(rowElement);
 			}
-		});
+		}
 
 		// This will use the get method to get the items as a raw array.
 		// @ts-ignore
@@ -827,6 +875,7 @@ export const List = Jot(
 	 * Finds a row DOM element by its key value.
 	 * This is more reliable than finding by index, especially after prepending
 	 * or when dividers are present.
+	 * Now uses element cache for O(1) lookups.
 	 *
 	 * @private
 	 * @param {*} keyValue - The key value to find
@@ -840,12 +889,33 @@ export const List = Jot(
 			return null;
 		}
 
-		// @ts-ignore
-		const children = Array.from(this.listContainer.children);
 		const keyString = String(keyValue);
 
-		for (const child of children)
+		// Try cache first for O(1) lookup
+		// @ts-ignore
+		if (this.elementCache && this.elementCache.has(keyString))
 		{
+			// @ts-ignore
+			const cached = this.elementCache.get(keyString);
+			// Verify element is still in DOM
+			// @ts-ignore
+			if (cached && this.listContainer.contains(cached))
+			{
+				return cached;
+			}
+			// Remove stale cache entry
+			// @ts-ignore
+			this.elementCache.delete(keyString);
+		}
+
+		// Fallback to DOM search and update cache
+		// @ts-ignore
+		const children = this.listContainer.children;
+		const childrenLength = children.length;
+
+		for (let i = 0; i < childrenLength; i++)
+		{
+			const child = children[i];
 			// Skip dividers
 			if (child.hasAttribute && child.hasAttribute('data-divider'))
 			{
@@ -855,6 +925,13 @@ export const List = Jot(
 			// Check if this row has the matching key
 			if (child.hasAttribute && child.getAttribute('data-row-key') === keyString)
 			{
+				// Update cache
+				// @ts-ignore
+				if (this.elementCache)
+				{
+					// @ts-ignore
+					this.elementCache.set(keyString, child);
+				}
 				return child;
 			}
 		}

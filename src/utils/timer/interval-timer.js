@@ -28,6 +28,7 @@ export class IntervalTimer extends Timer
 	 */
 	stop()
 	{
+		// @ts-ignore
 		globalThis.clearInterval(this.timer);
 	}
 }

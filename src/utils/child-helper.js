@@ -116,6 +116,7 @@ export class ChildHelper
 		 */
 		Html.removeElementData(oldChild);
 
+		// @ts-ignore
 		const frag = Builder.build(layout, null, parent);
 		oldChild.replaceWith(frag);
 	}
@@ -167,6 +168,7 @@ export class ChildHelper
 			return;
 		}
 
+		// @ts-ignore
 		const frag = Builder.build(childrenLayout, null, parent);
 		container.insertBefore(frag, container.firstChild);
 	}

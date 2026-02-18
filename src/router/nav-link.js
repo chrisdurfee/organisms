@@ -76,6 +76,7 @@ export class NavLink extends Component
             }],
             href: this.getString(href),
             text: this.getString(text),
+            // @ts-ignore
             nest: this.nest || this.children,
             // @ts-ignore
             dataSet: this.dataSet,

@@ -71,6 +71,7 @@ export class DataTableBody extends TableBody
 	 */
 	refresh()
 	{
+		// @ts-ignore
 		fetchAndRefresh(this.fetchCallback, this.tracker, this);
 	}
 

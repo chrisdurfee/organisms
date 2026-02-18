@@ -48,8 +48,11 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  */
 export const ScrollableContainer = Atom((props, children) =>
 {
+	// @ts-ignore
 	const tracker = new PaginationTracker(props.offset, props.limit);
+	// @ts-ignore
 	const container = props.scrollContainer || globalThis;
+	// @ts-ignore
 	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
 
 	/**
@@ -59,10 +62,12 @@ export const ScrollableContainer = Atom((props, children) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
+	// @ts-ignore
 	const handleScroll = createScrollHandler(container, tracker, fetchCallback, props.listCache);
 
 	return Div(
 		{
+			// @ts-ignore
 			class: props.containerClass ?? '',
 
 			/**
@@ -77,6 +82,7 @@ export const ScrollableContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
+				// @ts-ignore
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
 				/**
@@ -84,6 +90,7 @@ export const ScrollableContainer = Atom((props, children) =>
 				 */
 				handleScroll(null, parent, () =>
 				{
+					// @ts-ignore
 					parent[props.listCache].reset();
 				});
 			},

@@ -21,24 +21,35 @@ import { List } from "./list.js";
  */
 export const DataList = Atom((props) =>
 {
+	// @ts-ignore
 	const cache = props.cache ?? 'list';
 	return DataContainer(
 		{
 			listCache: cache,
+			// @ts-ignore
 			loadMoreItems: props.loadMoreItems,
+			// @ts-ignore
 			offset: props.offset,
+			// @ts-ignore
 			limit: props.limit,
+			// @ts-ignore
 			containerClass: props.containerClass ?? '',
+			// @ts-ignore
 			data: props.data
 		},
 		[
 			new List({
 				cache,
+				// @ts-ignore
 				key: props.key,
+				// @ts-ignore
 				items: props.items || [],
+				// @ts-ignore
 				divider: props.divider,
 				role: 'list',
+				// @ts-ignore
 				class: props.class,
+				// @ts-ignore
 				rowItem: props.rowItem
 			})
 		]

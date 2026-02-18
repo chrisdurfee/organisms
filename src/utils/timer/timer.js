@@ -69,6 +69,7 @@ export class Timer
 	 */
 	stop()
 	{
+		// @ts-ignore
 		globalThis.clearTimeout(this.timer);
 	}
 
@@ -83,6 +84,7 @@ export class Timer
 		const callBack = this.callBack;
 		if (typeof callBack === 'function')
 		{
+			// @ts-ignore
 			callBack.call();
 		}
 	}

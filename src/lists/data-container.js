@@ -42,16 +42,19 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the list container.
  * @property {string} [props.listCache] - The list cache name to use.
- * @param {array} children - The child elements to render.
+ * @param {Array<any>} children - The child elements to render.
  * @returns {object}
  */
 export const DataContainer = Atom((props, children) =>
 {
+	// @ts-ignore
 	const tracker = new PaginationTracker(props.offset, props.limit);
+	// @ts-ignore
 	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
 
 	return Div(
 		{
+			// @ts-ignore
 			class: props.containerClass ?? '',
 
 			/**
@@ -66,8 +69,10 @@ export const DataContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
+				// @ts-ignore
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
+				// @ts-ignore
 				parent[props.listCache].refresh();
 			}
 		},

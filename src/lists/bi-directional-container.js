@@ -57,7 +57,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @property {string} [props.containerClass] - The class to add to the container.
  * @property {string} [props.scrollDirection='down'] - Scroll direction: 'down' (scroll down for older) or 'up' (scroll up for older).
  * @property {string} [props.listCache] - The list cache name to use.
- * @param {array} children - The child elements to render.
+ * @param {Array<any>} children - The child elements to render.
  * @returns {object}
  *
  * @example
@@ -126,10 +126,15 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  */
 export const BiDirectionalContainer = Atom((props, children) =>
 {
+	// @ts-ignore
 	const tracker = new PaginationTracker(props.offset, props.limit);
+	// @ts-ignore
 	const container = props.scrollContainer || globalThis;
+	// @ts-ignore
 	const scrollDirection = props.scrollDirection || 'down';
+	// @ts-ignore
 	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
+	// @ts-ignore
 	const fetchNewerCallback = props.loadNewerItems || setupFetchNewerCallback(props.data);
 
 	/**
@@ -140,10 +145,12 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	 * @param {object} parent
 	 * @returns {void}
 	 */
+	// @ts-ignore
 	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache);
 
 	return Div(
 		{
+			// @ts-ignore
 			class: props.containerClass ?? '',
 
 			/**
@@ -158,6 +165,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				/**
 				 * This will add the refresh method to the list.
 				 */
+				// @ts-ignore
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
 
 				/**
@@ -165,6 +173,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 */
 				handleScroll(null, parent, () =>
 				{
+					// @ts-ignore
 					const list = parent[props.listCache];
 					list.reset();
 
@@ -199,16 +208,17 @@ export const BiDirectionalContainer = Atom((props, children) =>
 					}
 				});
 
-				const list = parent[props.listCache];
+			// @ts-ignore
+			const list = parent[props.listCache];
 
-				/**
-				 * Add method to manually fetch newer items (useful for polling).
-				 * This should be called via setInterval or other timer mechanism.
-				 * The placement of new items depends on scrollDirection:
-				 * - 'down': prepends to top (for feeds)
-				 * - 'up': appends to bottom (for chat)
-				 */
-				list.fetchNew = (shouldScroll = false) =>
+			/**
+			 * Add method to manually fetch newer items (useful for polling).
+			 * This should be called via setInterval or other timer mechanism.
+			 * The placement of new items depends on scrollDirection:
+			 * - 'down': prepends to top (for feeds)
+			 * - 'up': appends to bottom (for chat)
+			 */
+			list.fetchNew = (shouldScroll = false) =>
 				{
 					// Allow fetching if we're not already loading
 					// Don't require hasNewerData to be true (it starts as false)

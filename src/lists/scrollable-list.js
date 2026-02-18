@@ -24,28 +24,43 @@ import { List } from "./list.js";
  */
 export const ScrollableList = Atom((props) =>
 {
+	// @ts-ignore
 	const cache = props.cache ?? 'list';
 	return BiDirectionalContainer(
 		{
 			listCache: cache,
+			// @ts-ignore
 			scrollDirection: props.scrollDirection || 'down',
+			// @ts-ignore
 			scrollContainer: props.scrollContainer,
+			// @ts-ignore
 			loadMoreItems: props.loadMoreItems,
+			// @ts-ignore
 			offset: props.offset,
+			// @ts-ignore
 			limit: props.limit,
+			// @ts-ignore
 			containerClass: props.containerClass ?? 'flex flex-auto flex-col',
+			// @ts-ignore
 			data: props.data
 		},
 		[
 			new List({
 				cache,
+				// @ts-ignore
 				key: props.key,
+				// @ts-ignore
 				items: props.items || [],
+				// @ts-ignore
 				divider: props.divider,
 				role: 'list',
+				// @ts-ignore
 				class: props.class,
+				// @ts-ignore
 				emptyState: props.emptyState || null,
+				// @ts-ignore
 				rowItem: props.rowItem,
+				// @ts-ignore
 				linkParent: props.linkParent ?? false,
 				isDynamic: true
 			})
