@@ -535,8 +535,16 @@ export const List = Jot(
 		// Batch update all items at once for better performance
 		// @ts-ignore
 		const newItems = existingItems.concat(items);
+
+		/**
+		 * This will silently add the new rows without re-rendering the entire
+		 * list. This will bypass the data object and directly add the items
+		 * to the stage.
+		 */
 		// @ts-ignore
-		this.data.set('items', newItems);
+		this.data.attributes.items = newItems;
+		// @ts-ignore
+		this.data.stage.items = newItems;
 
 		// Update hasItems after appending
 		// @ts-ignore
