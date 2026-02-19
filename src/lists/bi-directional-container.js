@@ -191,34 +191,21 @@ export const BiDirectionalContainer = Atom((props, children) =>
 							}
 						}
 
-						// Use setTimeout to ensure DOM has updated
-						setTimeout(() =>
-						{
-							if (container === globalThis)
-							{
-								const scrollHeight = globalThis.document.documentElement.scrollHeight;
-								globalThis.scrollTo(0, scrollHeight);
-							}
-							else
-							{
-								// @ts-ignore
-								container.scrollTop = container.scrollHeight;
-							}
-						}, 0);
+						list.scrollToBottom();
 					}
 				});
 
-			// @ts-ignore
-			const list = parent[props.listCache];
+				// @ts-ignore
+				const list = parent[props.listCache];
 
-			/**
-			 * Add method to manually fetch newer items (useful for polling).
-			 * This should be called via setInterval or other timer mechanism.
-			 * The placement of new items depends on scrollDirection:
-			 * - 'down': prepends to top (for feeds)
-			 * - 'up': appends to bottom (for chat)
-			 */
-			list.fetchNew = (shouldScroll = false) =>
+				/**
+				 * Add method to manually fetch newer items (useful for polling).
+				 * This should be called via setInterval or other timer mechanism.
+				 * The placement of new items depends on scrollDirection:
+				 * - 'down': prepends to top (for feeds)
+				 * - 'up': appends to bottom (for chat)
+				 */
+				list.fetchNew = (shouldScroll = false) =>
 				{
 					// Allow fetching if we're not already loading
 					// Don't require hasNewerData to be true (it starts as false)
@@ -262,19 +249,22 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				/**
 				 * Add method to scroll to bottom (useful for chat interfaces).
 				 * This can be called after fetching new messages to keep user at bottom.
+				 * Uses onFlush to wait for batched UI updates.
 				 */
 				list.scrollToBottom = () =>
 				{
-					if (container === globalThis)
+					list.onFlush(() =>
 					{
-						const scrollHeight = globalThis.document.documentElement.scrollHeight;
-						globalThis.scrollTo(0, scrollHeight);
-					}
-					else
-					{
+						if (container === globalThis)
+						{
+							const scrollHeight = globalThis.document.documentElement.scrollHeight;
+							globalThis.scrollTo(0, scrollHeight);
+							return;
+						}
+
 						// @ts-ignore
 						container.scrollTop = container.scrollHeight;
-					}
+					});
 				};
 			},
 
