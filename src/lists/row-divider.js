@@ -60,12 +60,8 @@ export class RowDivider
 			// Set lastPrepend so comparisons work correctly for items
 			// that have the same date as the boundary
 			this.lastPrepend = value;
-			// Store the boundary separately to prevent duplicate dividers
-			// when prepending items that transition back to the existing date
+			// Store the boundary separately to track prepend context
 			this.prependBoundary = value;
-			// Clear lastDividerValue when starting a new prepend batch
-			// This prevents stale values from previous operations causing issues
-			this.lastDividerValue = null;
 		}
 		else
 		{
@@ -152,27 +148,11 @@ export class RowDivider
 		const value = this.getValue(item);
 		const first = this.setFirstValues(value);
 
-		// Only add divider for first item if skipFirst is false
-		if (first && !this.skipFirst)
-		{
-			this.addDivider(value, children);
-			return;
-		}
-
-		// Skip adding divider on first item when skipFirst is true
+		// Always add a divider for the first item when prepending.
+		// skipFirst only applies to append (bottom-to-top lists).
 		if (first)
 		{
-			return;
-		}
-
-		// When prepending, check if this value matches the prepend boundary.
-		// If it does, we should NOT add a divider because one already exists
-		// in the DOM for this date from the previous batch.
-		if (this.prependBoundary !== null && this.compare(this.prependBoundary, value) === false)
-		{
-			// Same value as prepend boundary - skip adding divider
-			// but still update lastPrepend to track the transition
-			this.lastPrepend = value;
+			this.addDivider(value, children);
 			return;
 		}
 

@@ -728,6 +728,23 @@ export const List = Jot(
 			}
 		}
 
+		// Remove the first child of listContainer if it is a divider.
+		// When prepending a new batch, the incoming rows will re-insert
+		// the correct seam divider at the proper position. Without this,
+		// the old seam divider ends up stranded in the middle of the
+		// date group after new items are prepended above it.
+		// @ts-ignore
+		if (this.listContainer)
+		{
+			// @ts-ignore
+			const firstChild = this.listContainer.firstChild;
+			if (firstChild && firstChild.getAttribute && firstChild.getAttribute('data-divider') === 'true')
+			{
+				// @ts-ignore
+				this.listContainer.removeChild(firstChild);
+			}
+		}
+
 		/**
 		 * This will get all the new rows to be batched later.
 		 */
