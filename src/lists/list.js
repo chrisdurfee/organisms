@@ -536,15 +536,28 @@ export const List = Jot(
 		// @ts-ignore
 		const newItems = existingItems.concat(items);
 
-		/**
-		 * This will silently add the new rows without re-rendering the entire
-		 * list. This will bypass the data object and directly add the items
-		 * to the stage.
-		 */
-		// @ts-ignore
-		this.data.attributes.items = newItems;
-		// @ts-ignore
-		this.data.stage.items = newItems;
+		if (existingItems.length === 0)
+		{
+			/**
+			 * For the initial load the for: directive must be notified so it
+			 * registers the items and doesn't wipe the DOM on later reactive
+			 * updates.
+			 */
+			// @ts-ignore
+			this.data.set('items', newItems);
+		}
+		else
+		{
+			/**
+			 * For incremental appends (e.g. mingle adding a new row) silently
+			 * patch the data store so the for: directive does not re-render
+			 * every existing row — only the new DOM nodes are inserted below.
+			 */
+			// @ts-ignore
+			this.data.attributes.items = newItems;
+			// @ts-ignore
+			this.data.stage.items = newItems;
+		}
 
 		// Update hasItems after appending
 		// @ts-ignore
@@ -844,21 +857,17 @@ export const List = Jot(
 		// @ts-ignore
 		const value = this.rowDivider.getValue(oldestItem);
 
-		// Create the divider layout
+		// Route through addDivider() so the lastDividerValue dedup guard suppresses
+		// a duplicate when the prepend loop already inserted a divider for this date.
+		const trailingRows = [];
 		// @ts-ignore
-		const dividerLayout = this.rowDivider.layout(value);
+		this.rowDivider.addDivider(value, trailingRows);
 		// @ts-ignore
-		if (dividerLayout && this.listContainer)
+		if (trailingRows.length > 0 && this.listContainer)
 		{
-			// Mark dividers so they can be identified
-			if (typeof dividerLayout === 'object')
-			{
-				dividerLayout['data-divider'] = 'true';
-			}
-
 			// Prepend the divider to the top of the list (before the oldest item)
 			// @ts-ignore
-			ChildHelper.prepend([dividerLayout], this.listContainer, this);
+			ChildHelper.prepend(trailingRows, this.listContainer, this);
 
 			// @ts-ignore
 			this.hasTrailingDivider = true;
