@@ -459,7 +459,10 @@ export const List = Jot(
 	reset()
 	{
 		// @ts-ignore
-		this.data.set('items', []);
+		this.data.stage.items = [];
+		// @ts-ignore
+		ChildHelper.removeAll(this.listContainer);
+
 		// @ts-ignore
 		this.data.set('hasItems', null);
 		// @ts-ignore

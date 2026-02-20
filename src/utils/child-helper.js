@@ -136,6 +136,20 @@ export class ChildHelper
 	}
 
 	/**
+	 * This will remove all children of a node.
+	 *
+	 * @param {object} node
+	 * @returns {void}
+	 */
+	static removeAll(node)
+	{
+		if (node)
+		{
+			Html.removeAll(node);
+		}
+	}
+
+	/**
 	 * This will append a child layout.
 	 *
 	 * @param {object} childrenLayout
