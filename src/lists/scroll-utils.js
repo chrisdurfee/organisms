@@ -126,7 +126,12 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
 	else
 	{
 		tracker.hasMoreData = false;
-		list.data.set('hasItems', false);
+
+		// Only mark as empty if no items were previously loaded
+		if (tracker.currentOffset === 0)
+		{
+			list.data.set('hasItems', false);
+		}
 	}
 };
 
@@ -173,29 +178,53 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 			}
 		}
 
-		// Restore scroll position to prevent jump
+		// Restore scroll position to prevent jump.
+		// Use onFlush to wait for batched data publishes to complete
+		// before measuring the final scroll height. Base 3.6+ batches
+		// reactive updates (e.g. hasItems) into microtasks, so the DOM
+		// may not be in its final state synchronously after prepend().
 		if (container)
 		{
-			// Calculate the difference in height after prepending
-			const newMetrics = getScrollMetrics(container);
-			const heightDifference = newMetrics.scrollHeight - scrollHeight;
-
-			// Adjust scroll position by the height difference
-			if (container === globalThis)
+			/**
+			 * Measures the new scroll height and adjusts scrollTop
+			 * by the difference so the viewport stays on the same content.
+			 */
+			const restoreScrollPosition = () =>
 			{
-				globalThis.scrollTo(0, scrollTop + heightDifference);
+				const newMetrics = getScrollMetrics(container);
+				const heightDifference = newMetrics.scrollHeight - scrollHeight;
+
+				if (container === globalThis)
+				{
+					globalThis.scrollTo(0, scrollTop + heightDifference);
+				}
+				else
+				{
+					// @ts-ignore
+					container.scrollTop = scrollTop + heightDifference;
+				}
+			};
+
+			// If the list supports onFlush, wait for batched DOM updates
+			if (typeof list.onFlush === 'function')
+			{
+				list.onFlush(restoreScrollPosition);
 			}
 			else
 			{
-				// @ts-ignore
-				container.scrollTop = scrollTop + heightDifference;
+				restoreScrollPosition();
 			}
 		}
 	}
 	else
 	{
 		tracker.hasMoreData = false;
-		list.data.set('hasItems', false);
+
+		// Only mark as empty if no items were previously loaded
+		if (tracker.currentOffset === 0)
+		{
+			list.data.set('hasItems', false);
+		}
 
 		// Add a trailing divider to show the date of the oldest items
 		if (list.addTrailingDivider)

@@ -5,20 +5,38 @@ import { DataHelper } from '../utils/data-helper.js';
 import { RowDivider } from './row-divider.js';
 
 /**
- * This will clone the data using shallow copy for better performance.
- * For array of objects, creates new array with shallow copies of each object.
+ * Deep-clone the incoming data so mutations never leak back to the caller.
+ *
+ * structuredClone handles Date, Map, Set, ArrayBuffer, nested objects, etc.
+ * correctly and is typically faster than a JSON round-trip.
+ *
+ * It throws on non-cloneable values (functions, DOM nodes, Symbols) — in that
+ * case we fall back to a shallow copy which silently skips those edge-cases
+ * exactly as the original implementation did.
  *
  * @param {*} data
  * @returns {*}
  */
-const clone = (data) => {
-	if (Array.isArray(data)) {
-		return data.map(item => {
-			if (item && typeof item === 'object') {
-				return { ...item };
-			}
-			return item;
-		});
+const clone = (data) =>
+{
+	if (Array.isArray(data))
+	{
+		try
+		{
+			return structuredClone(data);
+		}
+		catch (_)
+		{
+			// Fallback: shallow-copy each object in the array
+			return data.map(item =>
+			{
+				if (item && typeof item === 'object')
+				{
+					return { ...item };
+				}
+				return item;
+			});
+		}
 	}
 	return data;
 };
@@ -539,32 +557,27 @@ export const List = Jot(
 		// @ts-ignore
 		const newItems = existingItems.concat(items);
 
-		if (existingItems.length === 0)
-		{
-			/**
-			 * For the initial load the for: directive must be notified so it
-			 * registers the items and doesn't wipe the DOM on later reactive
-			 * updates.
-			 */
-			// @ts-ignore
-			this.data.set('items', newItems);
-		}
-		else
-		{
-			/**
-			 * For incremental appends (e.g. mingle adding a new row) silently
-			 * patch the data store so the for: directive does not re-render
-			 * every existing row — only the new DOM nodes are inserted below.
-			 */
-			// @ts-ignore
-			this.data.attributes.items = newItems;
-			// @ts-ignore
-			this.data.stage.items = newItems;
-		}
-
-		// Update hasItems after appending
+		/**
+		 * Silently patch the data store for both initial and incremental appends
+		 * so the for: directive is never triggered. This prevents the for: rebuild
+		 * (which runs without dividers because isDynamic skips them in row()) from
+		 * asynchronously wiping divider elements that ChildHelper.append already
+		 * placed in the DOM. The for: directive is not needed here because all DOM
+		 * management is done manually via ChildHelper for dynamic lists.
+		 */
 		// @ts-ignore
-		this.updateHasItems();
+		this.data.attributes.items = newItems;
+		// @ts-ignore
+		this.data.stage.items = newItems;
+
+		// Only update hasItems reactively when the state actually needs
+		// to change, to avoid triggering unnecessary batched publishes.
+		// @ts-ignore
+		if (this.data.get('hasItems') !== true)
+		{
+			// @ts-ignore
+			this.updateHasItems();
+		}
 
 		// This will batch push all the rows.
 		// @ts-ignore
@@ -813,9 +826,17 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.stage.items = newItems;
 
-		// Update hasItems after prepending
+		// Only update hasItems reactively when the state actually needs
+		// to change. When hasItems is already true, skipping the call
+		// avoids triggering a batched reactive publish that can cause
+		// the for: directive to re-process items asynchronously, which
+		// disrupts scroll position preservation in scroll-up lists.
 		// @ts-ignore
-		this.updateHasItems();
+		if (this.data.get('hasItems') !== true)
+		{
+			// @ts-ignore
+			this.updateHasItems();
+		}
 
 		// @ts-ignore
 		if (rows.length > 0 && this.listContainer)
