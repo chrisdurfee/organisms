@@ -99,7 +99,7 @@ export class DataHelper
 			let item = newArray[i];
 			// @ts-ignore
 			const id = item[key] ?? null;
-			if (!oldItems.has(item[id]))
+			if (!oldItems.has(id))
 			{
 				if (!addMissing)
 				{
@@ -113,7 +113,7 @@ export class DataHelper
 			/**
 			 * This will modify the existing item with new properties.
 			 */
-			const oldItem = oldItems.get(item[id]).item;
+			const oldItem = oldItems.get(id).item;
 			item = { ...oldItem, ...item };
 
 			changes.push(Item(i, item, 'updated'));
