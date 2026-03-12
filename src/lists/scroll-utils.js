@@ -412,7 +412,6 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 
 	return (e, parent, callBack) =>
 	{
-		const list = parent[listCache];
 		const metrics = getScrollMetrics(container);
 		if (canLoadFunc(metrics, tracker))
 		{
@@ -425,6 +424,13 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 			tracker.loading = true;
 			fetchCallback(tracker, (rows, lastCursor) =>
 			{
+				// Re-read the list reference here so it resolves after the async
+				// fetch completes. When BiDirectionalContainer is used inside an
+				// Atom (no intermediate Component scope), the child List Jot may
+				// not yet have registered itself as parent[listCache] at the time
+				// handleScroll is called synchronously during onCreated.
+				const list = parent[listCache];
+
 				if (callBack)
 				{
 					callBack();
