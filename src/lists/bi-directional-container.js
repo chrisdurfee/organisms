@@ -1,5 +1,5 @@
 import { Div } from "@base-framework/atoms";
-import { Atom } from "@base-framework/base";
+import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
 import { createScrollHandler, fetchAndRefresh, getNewestId, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
 
@@ -266,6 +266,19 @@ export const BiDirectionalContainer = Atom((props, children) =>
 						container.scrollTop = container.scrollHeight;
 					});
 				};
+			},
+
+			/**
+			 * This will remove the scroll event from the container when the atom is destroyed.
+			 *
+			 * @returns {void}
+			 */
+			onDestroyed()
+			{
+				/**
+				 * This will remove the scroll event when the atom is destroyed.
+				 */
+				Events.off('scroll', container, handleScroll);
 			},
 
 			/**

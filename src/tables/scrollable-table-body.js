@@ -1,4 +1,5 @@
 import { Tbody } from '@base-framework/atoms';
+import { Events } from '@base-framework/base';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
 import { createTableScrollHandler, fetchAndRefresh, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
@@ -136,6 +137,21 @@ export class ScrollableTableBody extends TableBody
 					// @ts-ignore
 					this.reset();
 				});
+			},
+
+			/**
+			 * This will remove the scroll event when the atom is destroyed.
+			 *
+			 * @param {object} ele
+			 * @param {object} parent
+			 */
+			onDestroyed: (ele, parent) =>
+			{
+				/**
+				 * This will remove the scroll event when the atom is destroyed.
+				 */
+				// @ts-ignore
+				Events.off('scroll', container, handleScroll);
 			},
 
 			/**

@@ -1,5 +1,5 @@
 import { Div } from "@base-framework/atoms";
-import { Atom } from "@base-framework/base";
+import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
 import { createScrollHandler, fetchAndRefresh, setupFetchCallback } from "./scroll-utils.js";
 
@@ -93,6 +93,20 @@ export const ScrollableContainer = Atom((props, children) =>
 					// @ts-ignore
 					parent[props.listCache].reset();
 				});
+			},
+
+			/**
+			 * This will remove the scroll event when the atom is destroyed.
+			 *
+			 * @param {object} ele
+			 * @param {object} parent
+			 */
+			onDestroyed(ele, parent)
+			{
+				/**
+				 * This will remove the scroll event when the atom is destroyed.
+				 */
+				Events.off('scroll', container, handleScroll);
 			},
 
 			/**
