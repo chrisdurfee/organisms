@@ -56,6 +56,7 @@ const clone = (data) =>
  * @property {string} [cache] - The cache name to use
  * @property {boolean} [linkParent] - The parent data to link
  * @property {boolean} [isDynamic] - Whether the list is dynamic
+ * @property {object} [skeleton] - Skeleton loader configuration `{ number, row }` shown before data loads.
  *
  * @returns {Component}
  */
@@ -89,11 +90,77 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		const items = (this.items) ? clone(this.items) : [];
+		// @ts-ignore
+		const isSkeletonEnabled = this.skeleton && items.length === 0;
+		if (isSkeletonEnabled)
+		{
+			return new Data({
+				// @ts-ignore
+				items: this.generateSkeletonRows(),
+				hasItems: true,
+				showSkeleton: true
+			});
+		}
 
 		return new Data({
 			items,
 			hasItems: null
 		});
+	},
+
+	/**
+	 * Generates skeleton placeholder rows from the skeleton configuration.
+	 *
+	 * @protected
+	 * @returns {Array<object>}
+	 */
+	generateSkeletonRows()
+	{
+		// @ts-ignore
+		const skeletonConfig = this.skeleton;
+		const count = (skeletonConfig && typeof skeletonConfig === 'object' && skeletonConfig.number)
+			? skeletonConfig.number
+			: 3;
+		const rowFn = (skeletonConfig && typeof skeletonConfig === 'object' && typeof skeletonConfig.row === 'function')
+			? skeletonConfig.row
+			: null;
+
+		if (!rowFn)
+		{
+			return [];
+		}
+
+		return Array.from({ length: count }, (_, index) => rowFn(index));
+	},
+
+	/**
+	 * Removes skeleton rows and prepares the list to receive real data.
+	 * Clears the skeleton DOM and silently resets the items array.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	removeSkeleton()
+	{
+		// @ts-ignore
+		if (!this.data || !this.data.get('showSkeleton'))
+		{
+			return;
+		}
+
+		// @ts-ignore
+		this.data.set('showSkeleton', false);
+		// Silently reset items so append/prepend start from a clean state
+		// @ts-ignore
+		this.data.attributes.items = [];
+		// @ts-ignore
+		this.data.stage.items = [];
+		// @ts-ignore
+		if (this.listContainer)
+		{
+			// @ts-ignore
+			ChildHelper.removeAll(this.listContainer);
+		}
 	},
 
 	/**
@@ -258,6 +325,14 @@ export const List = Jot(
 	 */
 	row(item, index, scope, children)
 	{
+		// If skeleton placeholder rows are active, return the item directly —
+		// it is already a rendered component, not raw data.
+		// @ts-ignore
+		if (this.data && this.data.get('showSkeleton'))
+		{
+			return item;
+		}
+
 		// @ts-ignore
 		if (typeof this.rowItem !== 'function')
 		{
@@ -449,6 +524,8 @@ export const List = Jot(
 	 */
 	setRows(rows)
 	{
+		// @ts-ignore
+		this.removeSkeleton();
 		const safeRows = Array.isArray(rows) ? rows : [];
 		// @ts-ignore
 		this.data.set('items', safeRows);
@@ -520,6 +597,9 @@ export const List = Jot(
 		{
 			return;
 		}
+
+		// @ts-ignore
+		this.removeSkeleton();
 
 		if (!Array.isArray(items))
 		{
@@ -750,6 +830,9 @@ export const List = Jot(
 		{
 			return;
 		}
+
+		// @ts-ignore
+		this.removeSkeleton();
 
 		if (!Array.isArray(items))
 		{

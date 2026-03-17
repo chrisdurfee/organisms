@@ -18,6 +18,8 @@ import { List } from "./list.js";
  * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {string} [props.cache] - The cache name to use.
+ * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
+ * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
  * @returns {object}
  */
 export const DataList = Atom((props) =>
@@ -52,6 +54,12 @@ export const DataList = Atom((props) =>
 				role: 'list',
 				// @ts-ignore
 				class: props.class,
+				// @ts-ignore
+				emptyState: props.emptyState || null,
+				// @ts-ignore
+				skeleton: props.skeleton || null,
+				// @ts-ignore
+				linkParent: props.linkParent || false,
 				// @ts-ignore
 				rowItem: props.rowItem
 			})

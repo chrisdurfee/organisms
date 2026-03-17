@@ -21,6 +21,7 @@ import { List } from "./list.js";
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {string} [props.cache] - The cache name to use.
  * @property {boolean} [props.linkParent] - Whether to link the parent data.
+ * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
  * @returns {object}
  */
 export const ScrollableList = Atom((props) =>
@@ -61,6 +62,8 @@ export const ScrollableList = Atom((props) =>
 				class: props.class,
 				// @ts-ignore
 				emptyState: props.emptyState || null,
+				// @ts-ignore
+				skeleton: props.skeleton || null,
 				// @ts-ignore
 				rowItem: props.rowItem,
 				// @ts-ignore
