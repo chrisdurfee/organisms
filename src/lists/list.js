@@ -476,13 +476,19 @@ export const List = Jot(
 	 */
 	reset()
 	{
+		// Clear both stage and attributes so data.get('items') returns [].
+		// append()/prepend() patch both; reset() must match to avoid stale reads.
 		// @ts-ignore
 		this.data.stage.items = [];
+		// @ts-ignore
+		this.data.attributes.items = [];
 		// @ts-ignore
 		ChildHelper.removeAll(this.listContainer);
 
 		// @ts-ignore
 		this.data.set('hasItems', null);
+		// @ts-ignore
+		this.defaultHasItemValue = null;
 		// @ts-ignore
 		this.hasTrailingDivider = false;
 

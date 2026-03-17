@@ -127,11 +127,10 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
 	{
 		tracker.hasMoreData = false;
 
-		// Only mark as empty if no items were previously loaded
-		if (tracker.currentOffset === 0)
-		{
-			list.data.set('hasItems', false);
-		}
+		// Let the list decide hasItems based on its actual items.
+		// After a reset + empty response, items is [] so hasItems becomes false.
+		// After loading items + last page empty, items still has data so hasItems stays true.
+		list.updateHasItems();
 	}
 };
 
@@ -220,11 +219,8 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 	{
 		tracker.hasMoreData = false;
 
-		// Only mark as empty if no items were previously loaded
-		if (tracker.currentOffset === 0)
-		{
-			list.data.set('hasItems', false);
-		}
+		// Let the list decide hasItems based on its actual items.
+		list.updateHasItems();
 
 		// Add a trailing divider to show the date of the oldest items
 		if (list.addTrailingDivider)
@@ -413,7 +409,11 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 	return (e, parent, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
-		if (canLoadFunc(metrics, tracker))
+
+		// Always fetch on the initial call (callBack signals the onCreated load).
+		// The scroll-position check only gates subsequent pagination loads triggered
+		// by scroll events, not the first data fetch.
+		if (callBack || canLoadFunc(metrics, tracker))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)
@@ -489,7 +489,9 @@ export const createTableScrollHandler = (container, tracker, fetchCallback) =>
 	return (e, list, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
-		if (canLoad(metrics, tracker))
+
+		// Always fetch on the initial call.
+		if (callBack || canLoad(metrics, tracker))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)
