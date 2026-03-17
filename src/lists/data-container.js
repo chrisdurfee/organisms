@@ -38,6 +38,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @param {object} props
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
  * @property {object} [props.data] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the list container.
@@ -50,7 +51,7 @@ export const DataContainer = Atom((props, children) =>
 	// @ts-ignore
 	const tracker = new PaginationTracker(props.offset, props.limit);
 	// @ts-ignore
-	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
+	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data, props.xhrMethod);
 
 	return Div(
 		{

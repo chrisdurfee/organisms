@@ -15,6 +15,7 @@ import { TableBody } from './table-body.js';
  * @property {Array<object>} [props.items] - The initial items.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.tableData] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on tableData.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  *
  * @class DataTableBody
@@ -61,7 +62,7 @@ export class DataTableBody extends TableBody
 		// @ts-ignore
 		this.setupPageTracker();
 		// @ts-ignore
-		this.fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData);
+		this.fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData, this.xhrMethod);
 	}
 
 	/**

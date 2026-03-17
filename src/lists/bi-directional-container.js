@@ -52,6 +52,7 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @property {function} [props.loadMoreItems] - A function to fetch older items (backward pagination using cursor).
  * @property {function} [props.loadNewerItems] - A function to fetch newer items (forward pagination using since).
  * @property {object} [props.data] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the container.
@@ -133,9 +134,9 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	// @ts-ignore
 	const scrollDirection = props.scrollDirection || 'down';
 	// @ts-ignore
-	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
+	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data, props.xhrMethod);
 	// @ts-ignore
-	const fetchNewerCallback = props.loadNewerItems || setupFetchNewerCallback(props.data);
+	const fetchNewerCallback = props.loadNewerItems || setupFetchNewerCallback(props.data, props.xhrMethod);
 
 	/**
 	 * This will handle the scroll event for loading older items.

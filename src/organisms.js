@@ -1,5 +1,6 @@
 ﻿import { BiDirectionalContainer } from './lists/bi-directional-container.js';
 import { DataList } from './lists/data-list.js';
+import { DynamicList } from './lists/dynamic-list.js';
 import { List } from './lists/list.js';
 import { ScrollableList } from './lists/scrollable-list.js';
 import { NavLink } from './router/nav-link.js';
@@ -10,4 +11,4 @@ import { DynamicTime } from './time/dynamic-time.js';
 import { IntervalTimer } from './utils/timer/interval-timer.js';
 import { Timer } from './utils/timer/timer.js';
 
-export { BiDirectionalContainer, DataList, DataTableBody, DynamicTime, IntervalTimer, List, NavLink, ScrollableList, ScrollableTableBody, TableBody, Timer };
+export { BiDirectionalContainer, DataList, DataTableBody, DynamicList, DynamicTime, IntervalTimer, List, NavLink, ScrollableList, ScrollableTableBody, TableBody, Timer };

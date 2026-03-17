@@ -17,6 +17,7 @@ import { TableBody } from './table-body.js';
  * @property {Array<object>} [props.items] - The initial items.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.tableData] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on tableData.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {boolean|object} [props.skeleton] - Skeleton configuration. Can be true for default or object with { number: 5, row: customRowFunction }
  * @property {number} [props.columnCount] - Number of columns for skeleton rows
@@ -72,7 +73,7 @@ export class ScrollableTableBody extends TableBody
 		// @ts-ignore
 		const tracker = this.setupPageTracker();
 		// @ts-ignore
-		this.fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData);
+		this.fetchCallback = this.loadMoreItems || setupFetchCallback(this.tableData, this.xhrMethod);
 
 		/**
 		 * This will handle the scroll event.

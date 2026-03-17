@@ -256,9 +256,10 @@ export const prependRows = (rows, tracker, list, newestId = null) =>
  * Set up a fetch callback for loading data.
  *
  * @param {object} data
+ * @param {string} [xhrMethod='all'] - The method name to call on data.xhr.
  * @returns {function}
  */
-export const setupFetchCallback = (data) =>
+export const setupFetchCallback = (data, xhrMethod = 'all') =>
 {
 	return (tracker, callback) =>
 	{
@@ -280,7 +281,7 @@ export const setupFetchCallback = (data) =>
 			callback(rows, lastCursor);
 		};
 
-		data.xhr.all('', resultCallback, tracker.currentOffset, tracker.limit, tracker.lastCursor);
+		data.xhr[xhrMethod]('', resultCallback, tracker.currentOffset, tracker.limit, tracker.lastCursor);
 	};
 };
 
@@ -289,9 +290,10 @@ export const setupFetchCallback = (data) =>
  * Uses the 'since' parameter to fetch items newer than the current newest ID.
  *
  * @param {object} data
+ * @param {string} [xhrMethod='all'] - The method name to call on data.xhr.
  * @returns {function}
  */
-export const setupFetchNewerCallback = (data) =>
+export const setupFetchNewerCallback = (data, xhrMethod = 'all') =>
 {
 	return (tracker, callback) =>
 	{
@@ -313,8 +315,8 @@ export const setupFetchNewerCallback = (data) =>
 			callback(rows, newestId);
 		};
 
-		// Pass since as a parameter to the all method
-		data.xhr.all('', resultCallback, 0, tracker.limit, null, tracker.newestId);
+		// Pass since as a parameter to the xhr method
+		data.xhr[xhrMethod]('', resultCallback, 0, tracker.limit, null, tracker.newestId);
 	};
 };
 

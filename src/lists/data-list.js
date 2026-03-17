@@ -15,6 +15,7 @@ import { List } from "./list.js";
  * @property {object} [props.divider] - The row divider.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.data] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {string} [props.cache] - The cache name to use.
  * @returns {object}
@@ -28,6 +29,8 @@ export const DataList = Atom((props) =>
 			listCache: cache,
 			// @ts-ignore
 			loadMoreItems: props.loadMoreItems,
+			// @ts-ignore
+			xhrMethod: props.xhrMethod,
 			// @ts-ignore
 			offset: props.offset,
 			// @ts-ignore

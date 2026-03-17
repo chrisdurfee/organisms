@@ -16,6 +16,7 @@ import { List } from "./list.js";
  * @property {object} [props.divider] - The row divider.
  * @property {function} [props.rowItem] - The row item.
  * @property {object} [props.data] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {string} [props.cache] - The cache name to use.
@@ -35,6 +36,8 @@ export const ScrollableList = Atom((props) =>
 			scrollContainer: props.scrollContainer,
 			// @ts-ignore
 			loadMoreItems: props.loadMoreItems,
+			// @ts-ignore
+			xhrMethod: props.xhrMethod,
 			// @ts-ignore
 			offset: props.offset,
 			// @ts-ignore
