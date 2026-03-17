@@ -283,9 +283,15 @@ export const List = Jot(
 		// @ts-ignore
 		this.checkHasAddedItems();
 
-		// If we added items to a linked parent, reset hasItems to default
+		// Silently reset hasItems on stage and attributes instead of using
+		// direct property assignment (this.data.hasItems = value). Direct
+		// assignment creates an own property on the Data instance that
+		// shadows the reactive stage/attributes, causing data.set() to
+		// skip subsequent updates when the value matches the own property.
 		// @ts-ignore
-		this.data.hasItems = this.defaultHasItemValue;
+		this.data.stage.hasItems = this.defaultHasItemValue;
+		// @ts-ignore
+		this.data.attributes.hasItems = this.defaultHasItemValue;
 	},
 
 	/**
