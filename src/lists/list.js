@@ -562,8 +562,17 @@ export const List = Jot(
 		// @ts-ignore
 		ChildHelper.removeAll(this.listContainer);
 
+		// Silently reset hasItems on both stage and attributes so the next
+		// reactive data.set('hasItems', false) from updateHasItems() always
+		// detects a change — even when the previous committed value was
+		// already false. Using data.set() here would queue a batched update
+		// that gets overwritten by updateHasItems() in the same synchronous
+		// callback, causing the batch to see false→false (no change) and
+		// skip notifying the On watcher.
 		// @ts-ignore
-		this.data.set('hasItems', null);
+		this.data.stage.hasItems = null;
+		// @ts-ignore
+		this.data.attributes.hasItems = null;
 		// @ts-ignore
 		this.defaultHasItemValue = null;
 		// @ts-ignore
