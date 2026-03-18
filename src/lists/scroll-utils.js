@@ -433,13 +433,6 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				// handleScroll is called synchronously during onCreated.
 				const list = parent[listCache];
 
-				// Guard against stale XHR callbacks landing on a destroyed list.
-				// This can happen when the component is unmounted mid-flight.
-				if (!list.data)
-				{
-					list._setupData();
-				}
-
 				if (callBack)
 				{
 					callBack();

@@ -217,6 +217,23 @@ export const List = Jot(
 
 		// @ts-ignore
 		this.defaultHasItemValue = hasItems;
+
+		/**
+		 * For standalone lists (not managed by a DataContainer),
+		 * set hasItems on the data so the On watcher renders
+		 * the empty state on the initial pass. DataContainer-managed
+		 * lists use linkParent=false and keep hasItems as null
+		 * to avoid flashing the empty state during async loading.
+		 * Also skip when skeleton is active — setData() already set
+		 * hasItems to true for skeleton rows, and overwriting it
+		 * with false would break the skeleton display.
+		 */
+		// @ts-ignore
+		if (hasItems === false && this.linkParent !== false && !this.data.get('showSkeleton'))
+		{
+			// @ts-ignore
+			this.data.set('hasItems', false);
+		}
 	},
 
 	/**
@@ -282,16 +299,8 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		this.checkHasAddedItems();
-
-		// Silently reset hasItems on stage and attributes instead of using
-		// direct property assignment (this.data.hasItems = value). Direct
-		// assignment creates an own property on the Data instance that
-		// shadows the reactive stage/attributes, causing data.set() to
-		// skip subsequent updates when the value matches the own property.
 		// @ts-ignore
-		this.data.stage.hasItems = this.defaultHasItemValue;
-		// @ts-ignore
-		this.data.attributes.hasItems = this.defaultHasItemValue;
+		this.data.hasItems = this.defaultHasItemValue;
 	},
 
 	/**
