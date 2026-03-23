@@ -56,7 +56,7 @@ export const DataContainer = Atom((props, children) =>
 	return Div(
 		{
 			// @ts-ignore
-			class: props.containerClass ?? '',
+			class: props.containerClass ?? 'flex flex-col',
 
 			/**
 			 * This will request to update the list when the atom is created.
