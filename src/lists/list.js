@@ -414,8 +414,11 @@ export const List = Jot(
 		// @ts-ignore
 		if (this.listContainer)
 		{
+			// Use key-based lookup (like replace()) so dividers in the DOM
+			// don't cause an off-by-N mismatch between the data index and
+			// the actual child node position.
 			// @ts-ignore
-			const rowElement = ChildHelper.get(this.listContainer, index);
+			const rowElement = this.findRowElementByKey(keyValue);
 			if (rowElement)
 			{
 				ChildHelper.remove(rowElement);
