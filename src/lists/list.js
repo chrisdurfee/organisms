@@ -930,6 +930,19 @@ export const List = Jot(
 		// This will use the get method to get the items as a raw array.
 		// @ts-ignore
 		const existingItems = this.data.get('items') || [];
+
+		// When prepending into an empty list (initial load), the last item in
+		// the reversed array ends up at the bottom of the DOM. Update lastAppend
+		// so future append operations (e.g., new messages via SSE) compare against
+		// the correct bottom-of-list value and don't insert duplicate dividers.
+		// @ts-ignore
+		if (this.rowDivider && existingItems.length === 0 && reverseItems.length > 0)
+		{
+			const bottomItem = reverseItems[reverseItems.length - 1];
+			// @ts-ignore
+			this.rowDivider.lastAppend = this.rowDivider.getValue(bottomItem);
+		}
+
 		const newItems = reverseItems.concat(existingItems);
 
 		/**
