@@ -985,14 +985,31 @@ export const List = Jot(
 		}
 
 		// @ts-ignore
+		if (!this.listContainer)
+		{
+			return;
+		}
+
+		// If the first child is already a divider, the prepend loop already
+		// inserted the correct header divider — skip to avoid duplicates.
+		// @ts-ignore
+		const firstChild = this.listContainer.firstChild;
+		if (firstChild && firstChild.getAttribute && firstChild.getAttribute('data-divider') === 'true')
+		{
+			// @ts-ignore
+			this.hasTrailingDivider = true;
+			return;
+		}
+
+		// @ts-ignore
 		const items = this.data.get('items') || [];
 		if (items.length === 0)
 		{
 			return;
 		}
 
-		// Get the first (oldest) item - items are in DESC order (newest first)
-		// so the oldest item is at index 0
+		// Get the first (oldest) item - after prepend reversal the oldest
+		// item sits at index 0.
 		const oldestItem = items[0];
 		// @ts-ignore
 		const value = this.rowDivider.getValue(oldestItem);
@@ -1003,7 +1020,7 @@ export const List = Jot(
 		// @ts-ignore
 		this.rowDivider.addDivider(value, trailingRows);
 		// @ts-ignore
-		if (trailingRows.length > 0 && this.listContainer)
+		if (trailingRows.length > 0)
 		{
 			// Prepend the divider to the top of the list (before the oldest item)
 			// @ts-ignore
