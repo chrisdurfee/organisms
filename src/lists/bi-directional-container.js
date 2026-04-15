@@ -248,6 +248,16 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				};
 
 				/**
+				 * Add method to reset the tracker and clear all list data
+				 * back to the initial state without re-fetching.
+				 */
+				list.clear = () =>
+				{
+					tracker.reset();
+					list.reset();
+				};
+
+				/**
 				 * Add method to scroll to bottom (useful for chat interfaces).
 				 * This can be called after fetching new messages to keep user at bottom.
 				 * Uses onFlush to wait for batched UI updates.
