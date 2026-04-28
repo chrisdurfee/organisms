@@ -163,11 +163,27 @@ export const BiDirectionalContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
+				// Always start from a clean pagination state on mount. If the
+				// Atom closure is reused across navigations the tracker may
+				// still hold the offset/cursor from the previous visit, which
+				// would cause the initial fetch to continue rather than restart.
+				tracker.reset();
+
 				/**
 				 * This will add the refresh method to the list.
 				 */
 				// @ts-ignore
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
+
+				/**
+				 * Expose a tracker-only reset so that List components with
+				 * persist=true can clear the pagination cursor on destroy
+				 * without also wiping the cached item data. This ensures the
+				 * next fetch (on resume/recreate) always starts from cursor=null
+				 * rather than the last loaded cursor.
+				 */
+				// @ts-ignore
+				parent[props.listCache].resetPagination = () => tracker.reset();
 
 				/**
 				 * This will request the first fetch.

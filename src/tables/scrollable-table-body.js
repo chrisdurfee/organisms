@@ -86,6 +86,23 @@ export class ScrollableTableBody extends TableBody
 	}
 
 	/**
+	 * Resets only the pagination tracker without clearing item data.
+	 * Called automatically by List.destroy() when persist=true so the
+	 * next fetch always starts from cursor=null on resume.
+	 *
+	 * @returns {void}
+	 */
+	resetPagination()
+	{
+		// @ts-ignore
+		if (this.tracker)
+		{
+			// @ts-ignore
+			this.tracker.reset();
+		}
+	}
+
+	/**
 	 * This will refresh the list.
 	 *
 	 * @returns {void}

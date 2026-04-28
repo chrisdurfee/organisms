@@ -21,6 +21,7 @@ import { List } from "./list.js";
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {string} [props.cache] - The cache name to use.
  * @property {boolean} [props.linkParent] - Whether to link the parent data.
+ * @property {boolean} [props.persist] - Whether to keep items alive on destroy (resets cursor automatically).
  * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
  * @returns {object}
  */
@@ -68,6 +69,8 @@ export const ScrollableList = Atom((props) =>
 				rowItem: props.rowItem,
 				// @ts-ignore
 				linkParent: props.linkParent ?? false,
+				// @ts-ignore
+				persist: props.persist ?? false,
 				isDynamic: true
 			})
 		]

@@ -301,6 +301,18 @@ export const List = Jot(
 		this.checkHasAddedItems();
 		// @ts-ignore
 		this.data.hasItems = this.defaultHasItemValue;
+
+		// When persist is enabled the item data is intentionally kept alive so
+		// the list can show the previous results immediately on resume. However
+		// the pagination cursor must be reset to null so the next fetch always
+		// starts from the beginning instead of continuing from where it left off.
+		// resetPagination() is injected by DataContainer / BiDirectionalContainer.
+		// @ts-ignore
+		if (this.persist === true && typeof this.resetPagination === 'function')
+		{
+			// @ts-ignore
+			this.resetPagination();
+		}
 	},
 
 	/**

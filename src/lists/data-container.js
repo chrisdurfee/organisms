@@ -72,7 +72,13 @@ export const DataContainer = Atom((props, children) =>
 				 */
 				// @ts-ignore
 				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
-
+				/**
+				 * Expose a tracker-only reset so that List components with
+				 * persist=true can clear the pagination cursor on destroy
+				 * without also wiping the cached item data.
+				 */
+				// @ts-ignore
+				parent[props.listCache].resetPagination = () => tracker.reset();
 				// @ts-ignore
 				parent[props.listCache].refresh();
 			}
