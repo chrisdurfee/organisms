@@ -111,7 +111,6 @@ export const List = Jot(
 	/**
 	 * Generates skeleton placeholder rows from the skeleton configuration.
 	 *
-	 * @protected
 	 * @returns {Array<object>}
 	 */
 	generateSkeletonRows()
@@ -137,7 +136,6 @@ export const List = Jot(
 	 * Removes skeleton rows and prepares the list to receive real data.
 	 * Clears the skeleton DOM and silently resets the items array.
 	 *
-	 * @protected
 	 * @returns {void}
 	 */
 	removeSkeleton()
@@ -177,7 +175,6 @@ export const List = Jot(
 	/**
 	 * This will set up the hasItems value.
 	 *
-	 * @protected
 	 * @returns {void}
 	 */
 	setupHasItems()
@@ -239,7 +236,6 @@ export const List = Jot(
 	/**
 	 * This will link the parent data to the list.
 	 *
-	 * @protected
 	 * @returns {*}
 	 */
 	linkParentData()
@@ -265,7 +261,6 @@ export const List = Jot(
 	/**
 	 * This will check if we have added items that should persist.
 	 *
-	 * @protected
 	 * @returns {void}
 	 */
 	checkHasAddedItems()
@@ -292,7 +287,6 @@ export const List = Jot(
 	/**
 	 * Called when the component is destroyed.
 	 *
-	 * @public
 	 * @returns {void}
 	 */
 	destroy()
@@ -408,7 +402,6 @@ export const List = Jot(
 	/**
 	 * This will delete an item from the list.
 	 *
-	 * @public
 	 * @param {*} keyValue
 	 * @returns {void}
 	 */
@@ -452,13 +445,13 @@ export const List = Jot(
 	/**
 	 * This will replace an item in the list.
 	 *
-	 * @protected
 	 * @param {object} row
 	 * @param {boolean} append
 	 * @returns {void}
 	 */
 	replace(row, append = true)
 	{
+		// @ts-ignore
 		if (row.status === 'unchanged')
 		{
 			return;
@@ -466,6 +459,7 @@ export const List = Jot(
 
 		// @ts-ignore
 		const item = row.item;
+		// @ts-ignore
 		if (row.status === 'added')
 		{
 			if (append)
@@ -506,7 +500,6 @@ export const List = Jot(
 	/**
 	 * This will remove items from the list.
 	 *
-	 * @public
 	 * @param {array} items
 	 * @returns {void}
 	 */
@@ -536,7 +529,6 @@ export const List = Jot(
 	/**
 	 * This will check if the list is empty.
 	 *
-	 * @public
 	 * @returns {boolean}
 	 */
 	isEmpty()
@@ -548,7 +540,6 @@ export const List = Jot(
 	/**
 	 * This will set the items in the list.
 	 *
-	 * @public
 	 * @param {array} rows
 	 * @returns {void}
 	 */
@@ -566,7 +557,6 @@ export const List = Jot(
 	/**
 	 * This will get the items in the list.
 	 *
-	 * @public
 	 * @returns {array}
 	 */
 	getRows()
@@ -578,7 +568,6 @@ export const List = Jot(
 	/**
 	 * This will reset the list.
 	 *
-	 * @public
 	 * @returns {void}
 	 */
 	reset()
@@ -626,7 +615,6 @@ export const List = Jot(
 	/**
 	 * This will append items to the list.
 	 *
-	 * @public
 	 * @param {array|object} items
 	 * @returns {void}
 	 */
@@ -654,6 +642,7 @@ export const List = Jot(
 		// @ts-ignore
 		const existingItems = this.data.get('items') || [];
 		const startIndex = existingItems.length;
+		// @ts-ignore
 		const length = items.length;
 
 		// Build rows using traditional for loop for better performance
@@ -716,7 +705,6 @@ export const List = Jot(
 	/**
 	 * This will mingle the new items with the old items.
 	 *
-	 * @public
 	 * @param {Array<Object>} newItems
 	 * @param {boolean} withDelete
 	 * @returns {void}
@@ -769,7 +757,6 @@ export const List = Jot(
 	/**
 	 * This will mingle the new items with the old items.
 	 *
-	 * @public
 	 * @param {Array<Object>} newItems
 	 * @param {boolean} append
 	 * @param {boolean} deleteIfFound
@@ -820,7 +807,6 @@ export const List = Jot(
 	/**
 	 * This will modify existing items in the list with updated data.
 	 *
-	 * @public
 	 * @param {Array<Object>} updatedItems
 	 * @param {boolean} addMissing
 	 * @returns {void}
@@ -859,7 +845,6 @@ export const List = Jot(
 	/**
 	 * This will prepend items to the list.
 	 *
-	 * @public
 	 * @param {array|object} items
 	 * @returns {void}
 	 */
@@ -914,6 +899,7 @@ export const List = Jot(
 		 * This will get all the new rows to be batched later.
 		 */
 		const rows = [];
+		// @ts-ignore
 		const reverseItems = items.reverse();
 		const reverseLength = reverseItems.length;
 
@@ -991,7 +977,6 @@ export const List = Jot(
 	 * This will add a trailing divider after the last item in the list.
 	 * Useful for showing the date of the oldest items when reaching the end.
 	 *
-	 * @public
 	 * @returns {void}
 	 */
 	addTrailingDivider()
@@ -1060,7 +1045,6 @@ export const List = Jot(
 	/**
 	 * Updates the hasItems flag based on current items length.
 	 *
-	 * @private
 	 * @returns {void}
 	 */
 	updateHasItems()
@@ -1075,7 +1059,6 @@ export const List = Jot(
 	/**
 	 * Finds the index of an item in the data array by its key.
 	 *
-	 * @private
 	 * @param {*} keyValue
 	 * @returns {number} Index of the item, or -1 if not found
 	 */
@@ -1093,7 +1076,6 @@ export const List = Jot(
 	 * or when dividers are present.
 	 * Now uses element cache for O(1) lookups.
 	 *
-	 * @private
 	 * @param {*} keyValue - The key value to find
 	 * @returns {HTMLElement|null} The DOM element, or null if not found
 	 */
