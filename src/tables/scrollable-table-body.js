@@ -21,6 +21,8 @@ import { TableBody } from './table-body.js';
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {boolean|object} [props.skeleton] - Skeleton configuration. Can be true for default or object with { number: 5, row: customRowFunction }
  * @property {number} [props.columnCount] - Number of columns for skeleton rows
+ * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the bottom
+ *   at which to prefetch the next page. Defaults to one viewport height.
  *
  * @class ScrollableTableBody
  * @extends TableBody
@@ -82,7 +84,8 @@ export class ScrollableTableBody extends TableBody
 		 * @param {object} parent
 		 * @returns {void}
 		 */
-		return createTableScrollHandler(container, tracker, this.fetchCallback);
+		// @ts-ignore
+		return createTableScrollHandler(container, tracker, this.fetchCallback, this.loadMoreThreshold);
 	}
 
 	/**

@@ -23,6 +23,8 @@ import { List } from "./list.js";
  * @property {boolean} [props.linkParent] - Whether to link the parent data.
  * @property {boolean} [props.persist] - Whether to keep items alive on destroy (resets cursor automatically).
  * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
+ * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the trigger edge
+ *   at which to prefetch the next page. Defaults to one viewport height.
  * @returns {object}
  */
 export const ScrollableList = Atom((props) =>
@@ -44,6 +46,8 @@ export const ScrollableList = Atom((props) =>
 			offset: props.offset,
 			// @ts-ignore
 			limit: props.limit,
+			// @ts-ignore
+			loadMoreThreshold: props.loadMoreThreshold,
 			// @ts-ignore
 			containerClass: props.containerClass ?? 'flex flex-auto flex-col',
 			// @ts-ignore

@@ -1,7 +1,43 @@
 import { PaginationTracker } from "./pagination-tracker.js";
 
-// Module-level constant for scroll threshold (in pixels)
+/**
+ * Default scroll threshold (in pixels) used as a hard fallback when the
+ * viewport size cannot be determined. In practice the resolved default
+ * is one viewport height (see `resolveThreshold`), which matches the
+ * prefetch behavior used by Twitter, YouTube, Instagram and other
+ * modern infinite-scroll feeds.
+ */
 const SCROLL_THRESHOLD = 100;
+
+/**
+ * Resolve a user-supplied threshold to a pixel value.
+ *
+ * Accepted forms:
+ * - `undefined` / `null`  -> one viewport height (best default for prefetch)
+ * - `number`              -> exact pixel value
+ * - `function(metrics)`   -> dynamic value computed from current metrics
+ *
+ * @param {number|function|null|undefined} threshold
+ * @param {object} metrics - The scroll metrics (scrollTop, clientHeight, scrollHeight).
+ * @returns {number}
+ */
+export function resolveThreshold(threshold, metrics)
+{
+	if (typeof threshold === 'function')
+	{
+		return threshold(metrics) || 0;
+	}
+
+	if (typeof threshold === 'number')
+	{
+		return threshold;
+	}
+
+	// Default: prefetch when the user is within one viewport height
+	// of the trigger edge. Falls back to SCROLL_THRESHOLD if metrics
+	// are unavailable for any reason.
+	return metrics?.clientHeight || SCROLL_THRESHOLD;
+}
 
 /**
  * Extract the newest ID from an array of rows by detecting sort order.
@@ -63,24 +99,28 @@ export function getScrollMetrics(container)
  * Check if the scroll position indicates we should load more items at the bottom.
  *
  * @param {object} metrics - The scroll metrics.
- * @param {number} [threshold=SCROLL_THRESHOLD] - The threshold in pixels.
+ * @param {number|function|null} [threshold] - The threshold in pixels, a function
+ *   `(metrics) => pixels`, or null/undefined to use one viewport height.
  * @returns {boolean}
  */
-export function shouldLoadMore(metrics, threshold = SCROLL_THRESHOLD)
+export function shouldLoadMore(metrics, threshold)
 {
-	return metrics.scrollTop + metrics.clientHeight >= metrics.scrollHeight - threshold;
+	const px = resolveThreshold(threshold, metrics);
+	return metrics.scrollTop + metrics.clientHeight >= metrics.scrollHeight - px;
 }
 
 /**
  * Check if the scroll position indicates we should load more items at the top.
  *
  * @param {object} metrics - The scroll metrics.
- * @param {number} [threshold=SCROLL_THRESHOLD] - The threshold in pixels.
+ * @param {number|function|null} [threshold] - The threshold in pixels, a function
+ *   `(metrics) => pixels`, or null/undefined to use one viewport height.
  * @returns {boolean}
  */
-export function shouldLoadAtTop(metrics, threshold = SCROLL_THRESHOLD)
+export function shouldLoadAtTop(metrics, threshold)
 {
-	return metrics.scrollTop <= threshold;
+	const px = resolveThreshold(threshold, metrics);
+	return metrics.scrollTop <= px;
 }
 
 /**
@@ -88,11 +128,12 @@ export function shouldLoadAtTop(metrics, threshold = SCROLL_THRESHOLD)
  *
  * @param {object} metrics - The scroll metrics.
  * @param {PaginationTracker} tracker - The pagination tracker.
+ * @param {number|function|null} [threshold] - Optional prefetch threshold.
  * @returns {boolean}
  */
-export const canLoad = (metrics, tracker) =>
+export const canLoad = (metrics, tracker, threshold) =>
 {
-	return shouldLoadMore(metrics) && tracker.canLoadMore();
+	return shouldLoadMore(metrics, threshold) && tracker.canLoadMore();
 };
 
 /**
@@ -100,11 +141,12 @@ export const canLoad = (metrics, tracker) =>
  *
  * @param {object} metrics - The scroll metrics.
  * @param {PaginationTracker} tracker - The pagination tracker.
+ * @param {number|function|null} [threshold] - Optional prefetch threshold.
  * @returns {boolean}
  */
-export const canLoadAtTop = (metrics, tracker) =>
+export const canLoadAtTop = (metrics, tracker, threshold) =>
 {
-	return shouldLoadAtTop(metrics) && tracker.canLoadMore();
+	return shouldLoadAtTop(metrics, threshold) && tracker.canLoadMore();
 };
 
 /**
@@ -401,9 +443,13 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
  * @param {function} fetchCallback - Function to fetch data.
  * @param {string} [direction='down'] - Scroll direction: 'down' for bottom loading, 'up' for top loading.
  * @param {string} [listCache='list'] - The list cache name.
+ * @param {number|function|null} [threshold] - Prefetch threshold in pixels, a
+ *   function `(metrics) => pixels`, or null/undefined to use one viewport height.
+ *   Loading is triggered when the user is within this distance of the trigger edge,
+ *   which lets new items render before they scroll into view (industry standard).
  * @returns {function} A scroll event handler function.
  */
-export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down', listCache = 'list') =>
+export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down', listCache = 'list', threshold) =>
 {
 	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
 	const isUpDirection = direction === 'up';
@@ -415,7 +461,7 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 		// Always fetch on the initial call (callBack signals the onCreated load).
 		// The scroll-position check only gates subsequent pagination loads triggered
 		// by scroll events, not the first data fetch.
-		if (callBack || canLoadFunc(metrics, tracker))
+		if (callBack || canLoadFunc(metrics, tracker, threshold))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)
@@ -477,16 +523,18 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
  * @param {object} container - The scrollable container.
  * @param {PaginationTracker} tracker - The pagination tracker.
  * @param {function} fetchCallback - Function to fetch data.
+ * @param {number|function|null} [threshold] - Prefetch threshold in pixels, a
+ *   function `(metrics) => pixels`, or null/undefined to use one viewport height.
  * @returns {function} A scroll event handler function.
  */
-export const createTableScrollHandler = (container, tracker, fetchCallback) =>
+export const createTableScrollHandler = (container, tracker, fetchCallback, threshold) =>
 {
 	return (e, list, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
 
 		// Always fetch on the initial call.
-		if (callBack || canLoad(metrics, tracker))
+		if (callBack || canLoad(metrics, tracker, threshold))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)

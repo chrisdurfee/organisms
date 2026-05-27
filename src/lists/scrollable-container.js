@@ -41,6 +41,10 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @property {object} [props.data] - The data object containing the xhr method.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
+ * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the bottom
+ *   at which to prefetch the next page. Pass a number for a fixed value or a function
+ *   `(metrics) => pixels` for dynamic sizing. Defaults to one viewport height so new
+ *   items typically render before the user reaches the bottom (standard prefetch UX).
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {string} [props.listCache] - The list cache name to use.
  * @param {array} children - The child elements to render.
@@ -63,7 +67,7 @@ export const ScrollableContainer = Atom((props, children) =>
 	 * @returns {void}
 	 */
 	// @ts-ignore
-	const handleScroll = createScrollHandler(container, tracker, fetchCallback, props.listCache);
+	const handleScroll = createScrollHandler(container, tracker, fetchCallback, 'down', props.listCache, props.loadMoreThreshold);
 
 	return Div(
 		{

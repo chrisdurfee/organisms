@@ -57,6 +57,10 @@ const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the container.
  * @property {string} [props.scrollDirection='down'] - Scroll direction: 'down' (scroll down for older) or 'up' (scroll up for older).
+ * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the trigger edge
+ *   at which to prefetch the next page. Pass a number for a fixed value or a function
+ *   `(metrics) => pixels` for dynamic sizing. Defaults to one viewport height so new
+ *   items typically render before the user reaches the edge (standard prefetch UX).
  * @property {string} [props.listCache] - The list cache name to use.
  * @param {Array<any>} children - The child elements to render.
  * @returns {object}
@@ -147,7 +151,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	 * @returns {void}
 	 */
 	// @ts-ignore
-	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache);
+	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache, props.loadMoreThreshold);
 
 	return Div(
 		{
