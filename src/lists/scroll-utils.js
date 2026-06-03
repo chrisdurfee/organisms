@@ -120,7 +120,11 @@ export function shouldLoadMore(metrics, threshold)
 export function shouldLoadAtTop(metrics, threshold)
 {
 	const px = resolveThreshold(threshold, metrics);
-	return metrics.scrollTop <= px;
+	// Ignore iOS rubber-band overscroll: scrollTop goes negative at the very
+	// top of a momentum fling. Triggering a prepend mid-overscroll is a main
+	// cause of the jerky / jump-to-top behavior on WebKit, so require a
+	// non-negative scrollTop before loading older items.
+	return metrics.scrollTop >= 0 && metrics.scrollTop <= px;
 }
 
 /**
@@ -186,10 +190,24 @@ export const updateRows = (rows, tracker, list, lastCursor = null) =>
  * @param {object} list
  * @param {string|null} lastCursor - The last cursor value.
  * @param {HTMLElement|globalThis|null} [container] - The scroll container.
+ * @param {function|null} [onComplete] - Invoked once the prepend and the
+ *   scroll-position restore have fully applied. Lets callers hold their
+ *   loading flag until the viewport is settled (important on iOS).
  * @returns {void}
  */
-export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, container = null) =>
+export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, container = null, onComplete = null) =>
 {
+	/**
+	 * Signals the caller that the update (and any scroll restore) is done.
+	 */
+	const done = () =>
+	{
+		if (typeof onComplete === 'function')
+		{
+			onComplete();
+		}
+	};
+
 	if (rows && rows.length > 0)
 	{
 		// Save scroll position before prepending
@@ -219,43 +237,86 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 			}
 		}
 
-		// Restore scroll position to prevent jump.
-		// Use onFlush to wait for batched data publishes to complete
-		// before measuring the final scroll height. Base 3.6+ batches
-		// reactive updates (e.g. hasItems) into microtasks, so the DOM
-		// may not be in its final state synchronously after prepend().
-		if (container)
+		if (!container)
 		{
-			/**
-			 * Measures the new scroll height and adjusts scrollTop
-			 * by the difference so the viewport stays on the same content.
-			 */
-			const restoreScrollPosition = () =>
-			{
-				const newMetrics = getScrollMetrics(container);
-				const heightDifference = newMetrics.scrollHeight - scrollHeight;
+			done();
+			return;
+		}
 
-				if (container === globalThis)
-				{
-					globalThis.scrollTo(0, scrollTop + heightDifference);
-				}
-				else
-				{
-					// @ts-ignore
-					container.scrollTop = scrollTop + heightDifference;
-				}
-			};
+		/**
+		 * Reads the current scroll offset of the container.
+		 *
+		 * @returns {number}
+		 */
+		const currentScrollTop = () =>
+			// @ts-ignore
+			(container === globalThis) ? globalThis.pageYOffset : container.scrollTop;
 
-			// If the list supports onFlush, wait for batched DOM updates
-			if (typeof list.onFlush === 'function')
+		/**
+		 * Measures the new scroll height and adjusts scrollTop by the
+		 * difference so the viewport stays anchored on the same content.
+		 * Re-measures every call so late layout (images, fonts) that grows
+		 * the prepended block is absorbed automatically.
+		 *
+		 * @returns {number} The scroll offset that was applied.
+		 */
+		const restoreScrollPosition = () =>
+		{
+			const newMetrics = getScrollMetrics(container);
+			const heightDifference = newMetrics.scrollHeight - scrollHeight;
+			const target = scrollTop + heightDifference;
+
+			if (container === globalThis)
 			{
-				list.onFlush(restoreScrollPosition);
+				globalThis.scrollTo(0, target);
 			}
 			else
 			{
-				restoreScrollPosition();
+				// @ts-ignore
+				container.scrollTop = target;
 			}
-		}
+
+			return target;
+		};
+
+		/**
+		 * The dynamic list mutates the DOM synchronously during prepend
+		 * (ChildHelper writes the rows immediately and the silent data patch
+		 * skips the reactive publish), so the new height is measurable right
+		 * away. Correct the scroll offset synchronously FIRST — before the
+		 * browser paints — so the viewport never visibly jumps down (the
+		 * "jerky" symptom).
+		 *
+		 * On iOS the scroll position is also reconciled on a separate thread,
+		 * so a write issued while a momentum fling is still decelerating can
+		 * be silently ignored — leaving the user near the top, which then
+		 * lets the next momentum scroll event fire another prepend and walk
+		 * the list all the way to the top. Re-assert the correction across a
+		 * few frames until it actually sticks, and hold the loading flag
+		 * (via done()) until then so a single fling cannot cascade.
+		 */
+		const applyRestore = () =>
+		{
+			let target = restoreScrollPosition();
+			let frames = 0;
+
+			const settle = () =>
+			{
+				target = restoreScrollPosition();
+				const landed = Math.abs(currentScrollTop() - target) <= 2;
+				if (landed || ++frames >= 6)
+				{
+					done();
+					return;
+				}
+
+				requestAnimationFrame(settle);
+			};
+
+			requestAnimationFrame(settle);
+		};
+
+		applyRestore();
 	}
 	else
 	{
@@ -269,6 +330,8 @@ export const updateRowsAtTop = (rows, tracker, list, lastCursor = null, containe
 		{
 			list.addTrailingDivider();
 		}
+
+		done();
 	}
 };
 
@@ -454,14 +517,36 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
 	const isUpDirection = direction === 'up';
 
+	// When scrolling up (chat-style prepend), prefetching a full viewport
+	// early makes older pages load while the user is still mid-fling, which
+	// reads as "loading too early". Default to half a viewport for the top
+	// trigger so the prepend happens closer to the edge while still staying
+	// ahead of a visible gap. Down-direction keeps the full-viewport default.
+	const effectiveThreshold = (threshold === undefined && isUpDirection)
+		? (metrics) => Math.round((metrics.clientHeight || SCROLL_THRESHOLD) * 0.5)
+		: threshold;
+
+	// Short suppression window applied after a top prepend settles. Residual
+	// scroll events from the same iOS momentum fling would otherwise fire a
+	// second prepend immediately (before the user has actually scrolled up
+	// again), cascading the list toward the top. Only used for 'up'.
+	let cooldownUntil = 0;
+
 	return (e, parent, callBack) =>
 	{
 		const metrics = getScrollMetrics(container);
 
+		// Honor the post-prepend cooldown for scroll-triggered top loads only.
+		// The initial load (callBack present) always bypasses it.
+		if (!callBack && isUpDirection && performance.now() < cooldownUntil)
+		{
+			return;
+		}
+
 		// Always fetch on the initial call (callBack signals the onCreated load).
 		// The scroll-position check only gates subsequent pagination loads triggered
 		// by scroll events, not the first data fetch.
-		if (callBack || canLoadFunc(metrics, tracker, threshold))
+		if (callBack || canLoadFunc(metrics, tracker, effectiveThreshold))
 		{
 			// Prevent multiple concurrent loads
 			if (tracker.loading)
@@ -490,8 +575,19 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				// Use appropriate update function based on direction
 				if (isUpDirection)
 				{
-					// For 'up' direction, pass container to preserve scroll position
-					updateRowsAtTop(rows, tracker, list, lastCursor, container);
+					// For 'up' direction, pass the container to preserve scroll
+					// position and hold the loading flag until the restore has
+					// fully applied. Clearing it immediately lets the next scroll
+					// event from the same iOS momentum fling start another prepend
+					// before the position is corrected, cascading into the
+					// jump-to-top.
+					updateRowsAtTop(rows, tracker, list, lastCursor, container, () =>
+					{
+						// Arm the cooldown before releasing so the same fling's
+						// trailing scroll events can't immediately re-trigger.
+						cooldownUntil = performance.now() + 300;
+						tracker.loading = false;
+					});
 
 					// Set newestId from initial load by detecting sort order
 					if (isInitialLoad)
@@ -506,9 +602,8 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				else
 				{
 					updateRows(rows, tracker, list, lastCursor);
+					tracker.loading = false;
 				}
-
-				tracker.loading = false;
 			});
 		}
 	};

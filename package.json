@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.1.50",
+	"version": "1.1.52",
 
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
@@ -9,6 +9,7 @@
 		"prepublishOnly": "node ./esbuild.js"
 	},
 	"type": "module",
+	"sideEffects": false,
 	"keywords": [
 		"JavaScript",
 		"Framework",
@@ -38,7 +39,8 @@
 		"package.json",
 		"readme.md",
 		"copilot.md",
-		"dist"
+		"dist",
+		"!dist/**/*.map"
 	],
 	"exports": {
 		"./package.json": "./package.json",
