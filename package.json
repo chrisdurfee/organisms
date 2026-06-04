@@ -1,12 +1,12 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.1.52",
+	"version": "1.1.53",
 
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
 		"build": "node ./esbuild.js && tsc",
-		"prepublishOnly": "node ./esbuild.js"
+		"prepublishOnly": "npm run build"
 	},
 	"type": "module",
 	"sideEffects": false,
@@ -48,6 +48,26 @@
 			"types": "./dist/types/organisms.d.ts",
 			"import": "./dist/organisms.js",
 			"require": "./dist/organisms.js"
+		},
+		"./lists/*": {
+			"types": "./dist/types/lists/*.d.ts",
+			"import": "./dist/lists/*.js"
+		},
+		"./router/*": {
+			"types": "./dist/types/router/*.d.ts",
+			"import": "./dist/router/*.js"
+		},
+		"./tables/*": {
+			"types": "./dist/types/tables/*.d.ts",
+			"import": "./dist/tables/*.js"
+		},
+		"./time/*": {
+			"types": "./dist/types/time/*.d.ts",
+			"import": "./dist/time/*.js"
+		},
+		"./utils/*": {
+			"types": "./dist/types/utils/*.d.ts",
+			"import": "./dist/utils/*.js"
 		}
 	},
 	"homepage": "https://github.com/chrisdurfee/organisms#readme"
