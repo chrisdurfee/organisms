@@ -40,6 +40,41 @@ const timer = new IntervalTimer(MINUTE_INTERVAL, () =>
 timer.start();
 
 /**
+ * This will create a simple flat data object that is bound to all
+ * the dynamic second time elements. It is kept separate from the
+ * minute data so minute elements are not re-rendered every second.
+ *
+ * @constant
+ * @type {SimpleData} secondData
+ */
+const secondData = new SimpleData({
+	date: 0
+});
+
+/**
+ * @constant
+ * @type {number} SECOND_INTERVAL
+ */
+const SECOND_INTERVAL = 1000;
+
+/**
+ * This will update the second data value every second.
+ *
+ * @constant
+ * @type {IntervalTimer} secondTimer
+ */
+const secondTimer = new IntervalTimer(SECOND_INTERVAL, () =>
+{
+	secondData.increment('date');
+});
+
+/**
+ * This will start the timer to update any dynamic second time
+ * elements.
+ */
+secondTimer.start();
+
+/**
  * DynamicTime
  *
  * This will create a dynamic time element that will update
@@ -90,5 +125,31 @@ export class DynamicTime extends Component
 		const dateTime = this.dateTime;
 		// @ts-ignore
 		return (this.filter) ? this.filter(dateTime) : dateTime;
+	}
+}
+
+/**
+ * DynamicSecondTime
+ *
+ * This will create a dynamic time element that will update
+ * the time every second.
+ *
+ * @property {string} dateTime - The date time to display.
+ * @property {function} [filter] - The filter to apply to the date time.
+ *
+ * @class
+ * @augments DynamicTime
+ */
+export class DynamicSecondTime extends DynamicTime
+{
+	/**
+	 * This will set up the component data with the second
+	 * data created above so it updates every second.
+	 *
+	 * @returns {object}
+	 */
+	setData()
+	{
+		return secondData;
 	}
 }
