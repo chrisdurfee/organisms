@@ -52,6 +52,15 @@ export class DataHelper
 			}
 
 			const { item: oldItem } = oldItemsMap.get(keyValue);
+
+			/**
+			 * Remove from oldItemsMap to identify deletions later. This must
+			 * happen for every item found in both arrays (updated AND
+			 * unchanged) — otherwise updated items are wrongly reported
+			 * as deleted.
+			 */
+			oldItemsMap.delete(keyValue);
+
 			if (!this.deepEqual(oldItem, newItem))
 			{
 				// Item is updated
@@ -61,9 +70,6 @@ export class DataHelper
 
 			// Item is unchanged
 			changes.push(Item(i, newItem, 'unchanged'));
-
-			// Remove from oldItemsMap to identify deletions later
-			oldItemsMap.delete(keyValue);
 		}
 
 		// Remaining items in oldItemsMap are deleted
@@ -148,13 +154,18 @@ export class DataHelper
 	 *
 	 * @param {Object} obj1 - The first object to compare.
 	 * @param {Object} obj2 - The second object to compare.
+	 * @param {number} [depth=0] - The current recursion depth.
 	 * @returns {boolean} True if objects are equal, else false.
 	 * @private
 	 */
-	static deepEqual(obj1, obj2)
+	static deepEqual(obj1, obj2, depth = 0)
 	{
 		// Fast path: identical references
 		if (obj1 === obj2) return true;
+
+		// Guard against cyclic or pathologically deep server data which
+		// would otherwise overflow the call stack and kill the list update.
+		if (depth >= 32) return false;
 
 		// Fast path: type check and null check
 		if (
@@ -189,7 +200,7 @@ export class DataHelper
 			}
 
 			// Recursive comparison
-			if (!this.deepEqual(obj1[key], obj2[key]))
+			if (!this.deepEqual(obj1[key], obj2[key], depth + 1))
 			{
 				return false;
 			}

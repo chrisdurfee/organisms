@@ -25,6 +25,11 @@ const MINUTE_INTERVAL = 60000;
 /**
  * This will update the the data value every minute.
  *
+ * The timer is NOT started at import time. It is ref-counted and only
+ * runs while at least one DynamicTime element is mounted, so apps that
+ * import this module (or show no time elements) pay no recurring timer
+ * cost, and tree-shaking with `sideEffects: false` stays safe.
+ *
  * @constant
  * @type {IntervalTimer} timer
  */
@@ -34,10 +39,37 @@ const timer = new IntervalTimer(MINUTE_INTERVAL, () =>
 });
 
 /**
- * This will start the timer to update any dynamic time
- * elements.
+ * Number of mounted DynamicTime elements sharing the minute timer.
+ *
+ * @type {number}
  */
-timer.start();
+let minuteRefs = 0;
+
+/**
+ * This will start the minute timer when the first element mounts.
+ *
+ * @returns {void}
+ */
+const retainMinuteTimer = () =>
+{
+	if (++minuteRefs === 1)
+	{
+		timer.start();
+	}
+};
+
+/**
+ * This will stop the minute timer when the last element unmounts.
+ *
+ * @returns {void}
+ */
+const releaseMinuteTimer = () =>
+{
+	if (minuteRefs > 0 && --minuteRefs === 0)
+	{
+		timer.stop();
+	}
+};
 
 /**
  * This will create a simple flat data object that is bound to all
@@ -60,6 +92,9 @@ const SECOND_INTERVAL = 1000;
 /**
  * This will update the second data value every second.
  *
+ * Like the minute timer, this is ref-counted and only runs while at
+ * least one DynamicSecondTime element is mounted.
+ *
  * @constant
  * @type {IntervalTimer} secondTimer
  */
@@ -69,10 +104,37 @@ const secondTimer = new IntervalTimer(SECOND_INTERVAL, () =>
 });
 
 /**
- * This will start the timer to update any dynamic second time
- * elements.
+ * Number of mounted DynamicSecondTime elements sharing the second timer.
+ *
+ * @type {number}
  */
-secondTimer.start();
+let secondRefs = 0;
+
+/**
+ * This will start the second timer when the first element mounts.
+ *
+ * @returns {void}
+ */
+const retainSecondTimer = () =>
+{
+	if (++secondRefs === 1)
+	{
+		secondTimer.start();
+	}
+};
+
+/**
+ * This will stop the second timer when the last element unmounts.
+ *
+ * @returns {void}
+ */
+const releaseSecondTimer = () =>
+{
+	if (secondRefs > 0 && --secondRefs === 0)
+	{
+		secondTimer.stop();
+	}
+};
 
 /**
  * DynamicTime
@@ -97,6 +159,48 @@ export class DynamicTime extends Component
 	setData()
 	{
 		return data;
+	}
+
+	/**
+	 * This will retain the shared timer when the element mounts.
+	 *
+	 * @returns {void}
+	 */
+	afterSetup()
+	{
+		this.retainTimer();
+	}
+
+	/**
+	 * This will release the shared timer when the element unmounts.
+	 *
+	 * @returns {void}
+	 */
+	beforeDestroy()
+	{
+		this.releaseTimer();
+	}
+
+	/**
+	 * This will retain the minute timer.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	retainTimer()
+	{
+		retainMinuteTimer();
+	}
+
+	/**
+	 * This will release the minute timer.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	releaseTimer()
+	{
+		releaseMinuteTimer();
 	}
 
 	/**
@@ -151,5 +255,27 @@ export class DynamicSecondTime extends DynamicTime
 	setData()
 	{
 		return secondData;
+	}
+
+	/**
+	 * This will retain the second timer.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	retainTimer()
+	{
+		retainSecondTimer();
+	}
+
+	/**
+	 * This will release the second timer.
+	 *
+	 * @protected
+	 * @returns {void}
+	 */
+	releaseTimer()
+	{
+		releaseSecondTimer();
 	}
 }

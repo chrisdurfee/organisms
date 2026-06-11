@@ -1,36 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { fetchAndRefresh, setupFetchCallback } from "./scroll-utils.js";
-
-/**
- * This will reset the tracker and fetch new data.
- *
- * @param {Function} fetchCallback
- * @param {PaginationTracker} tracker
- * @param {object} list
- * @returns {Function}
- */
-const setupResetCallback = (fetchCallback, tracker, list) =>
-{
-	return () =>
-	{
-		fetchAndRefresh(fetchCallback, tracker, list);
-	};
-};
-
-/**
- * This will add the refresh method to the list.
- *
- * @param {Function} fetchCallback
- * @param {PaginationTracker} tracker
- * @param {object} parent
- * @param {string} listCache
- */
-const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
-{
-	parent[listCache].refresh = setupResetCallback(fetchCallback, tracker, parent[listCache]);
-};
+import { addRefreshMethod, getListFromParent, setupFetchCallback } from "./scroll-utils.js";
 
 /**
  * A DataContainer component that updates using the provided data.
@@ -67,20 +38,25 @@ export const DataContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
+				// @ts-ignore
+				const list = getListFromParent(parent, props.listCache);
+				if (!list)
+				{
+					return;
+				}
+
 				/**
 				 * This will add the refresh method to the list.
 				 */
-				// @ts-ignore
-				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
+				addRefreshMethod(fetchCallback, tracker, list);
+
 				/**
 				 * Expose a tracker-only reset so that List components with
 				 * persist=true can clear the pagination cursor on destroy
 				 * without also wiping the cached item data.
 				 */
-				// @ts-ignore
-				parent[props.listCache].resetPagination = () => tracker.reset();
-				// @ts-ignore
-				parent[props.listCache].refresh();
+				list.resetPagination = () => tracker.reset();
+				list.refresh();
 			}
 		},
 		children

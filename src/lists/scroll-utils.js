@@ -44,39 +44,99 @@ export function resolveThreshold(threshold, metrics)
  * Compares first and last item IDs to determine if data is in ASC or DESC order.
  *
  * @param {Array} rows - The array of row objects
+ * @param {string} [key='id'] - The property holding the item ID.
  * @returns {number|string|null} The highest ID, or null if no valid ID found
  */
-export function getNewestId(rows)
+export function getNewestId(rows, key = 'id')
 {
 	if (!rows || rows.length === 0)
 	{
 		return null;
 	}
 
-	const firstItem = rows[0];
-	const lastItem = rows[rows.length - 1];
+	// Use null-safe checks so falsy-but-valid IDs (e.g. 0) are not skipped.
+	const firstId = rows[0]?.[key] ?? null;
+	const lastId = rows[rows.length - 1]?.[key] ?? null;
 
 	// Both items have IDs - compare to detect sort order
-	if (firstItem?.id && lastItem?.id)
+	if (firstId !== null && lastId !== null)
 	{
 		// If first ID > last ID, it's DESC order (newest first)
 		// If first ID < last ID, it's ASC order (oldest first)
-		return firstItem.id > lastItem.id ? firstItem.id : lastItem.id;
+		return firstId > lastId ? firstId : lastId;
 	}
 
 	// Only one item has an ID - return whichever exists
-	if (firstItem?.id)
-	{
-		return firstItem.id;
-	}
-
-	if (lastItem?.id)
-	{
-		return lastItem.id;
-	}
-
-	return null;
+	return firstId ?? lastId;
 }
+
+/**
+ * Safely resolve the child list registered on the parent under the
+ * cache name. Logs a warning instead of throwing when the list has
+ * not registered itself yet (wrong/missing `cache` prop, or an Atom
+ * used without an intermediate component scope).
+ *
+ * @param {object} parent
+ * @param {string} [listCache='list']
+ * @returns {object|null}
+ */
+export const getListFromParent = (parent, listCache = 'list') =>
+{
+	const cacheName = listCache ?? 'list';
+	const list = parent?.[cacheName] ?? null;
+	if (!list)
+	{
+		console.warn(`[organisms] No list found on parent under cache name "${cacheName}". Check that the List "cache" prop matches the container "listCache" prop.`);
+	}
+	return list;
+};
+
+/**
+ * This will add the refresh method to the list.
+ *
+ * @param {Function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {void}
+ */
+export const addRefreshMethod = (fetchCallback, tracker, list) =>
+{
+	list.refresh = () => fetchAndRefresh(fetchCallback, tracker, list);
+};
+
+/**
+ * Invoke a fetch callback defensively. If the callback throws
+ * synchronously or returns a rejected promise, onError is invoked so
+ * loading flags are always released and pagination never deadlocks.
+ *
+ * @param {Function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {Function} handler
+ * @param {Function} onError
+ * @returns {void}
+ */
+export const invokeFetch = (fetchCallback, tracker, handler, onError) =>
+{
+	try
+	{
+		const result = fetchCallback(tracker, handler);
+		// @ts-ignore
+		if (result && typeof result.catch === 'function')
+		{
+			// @ts-ignore
+			result.catch((error) =>
+			{
+				console.error('[organisms] Fetch callback failed:', error);
+				onError();
+			});
+		}
+	}
+	catch (error)
+	{
+		console.error('[organisms] Fetch callback failed:', error);
+		onError();
+	}
+};
 
 /**
  * Get scroll metrics for a container.
@@ -488,9 +548,12 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
 	}
 
 	tracker.loadingNewer = true;
-	fetchNewerCallback(tracker, (rows, newestId) =>
+	invokeFetch(fetchNewerCallback, tracker, (rows, newestId) =>
 	{
 		prependRows(rows, tracker, list, newestId);
+		tracker.loadingNewer = false;
+	}, () =>
+	{
 		tracker.loadingNewer = false;
 	});
 };
@@ -555,18 +618,26 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 			}
 
 			tracker.loading = true;
-			fetchCallback(tracker, (rows, lastCursor) =>
+			invokeFetch(fetchCallback, tracker, (rows, lastCursor) =>
 			{
 				// Re-read the list reference here so it resolves after the async
 				// fetch completes. When BiDirectionalContainer is used inside an
 				// Atom (no intermediate Component scope), the child List Jot may
 				// not yet have registered itself as parent[listCache] at the time
 				// handleScroll is called synchronously during onCreated.
-				const list = parent[listCache];
+				const list = getListFromParent(parent, listCache);
 
 				if (callBack)
 				{
 					callBack();
+				}
+
+				// Without a list reference there is nothing to update; release
+				// the loading flag so pagination is not permanently frozen.
+				if (!list)
+				{
+					tracker.loading = false;
+					return;
 				}
 
 				// Check if this is initial load BEFORE updating (which increments offset)
@@ -588,22 +659,29 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 						cooldownUntil = performance.now() + 300;
 						tracker.loading = false;
 					});
-
-					// Set newestId from initial load by detecting sort order
-					if (isInitialLoad)
-					{
-						const newestId = getNewestId(rows);
-						if (newestId !== null)
-						{
-							tracker.updateNewest(newestId);
-						}
-					}
 				}
 				else
 				{
 					updateRows(rows, tracker, list, lastCursor);
 					tracker.loading = false;
 				}
+
+				/**
+				 * Set newestId from the initial page (both directions) so
+				 * forward pagination (fetchNew) never polls with a null
+				 * cursor, which could re-fetch and duplicate the first page.
+				 */
+				if (isInitialLoad)
+				{
+					const newestId = getNewestId(rows);
+					if (newestId !== null)
+					{
+						tracker.updateNewest(newestId);
+					}
+				}
+			}, () =>
+			{
+				tracker.loading = false;
 			});
 		}
 	};
@@ -638,7 +716,7 @@ export const createTableScrollHandler = (container, tracker, fetchCallback, thre
 			}
 
 			tracker.loading = true;
-			fetchCallback(tracker, (rows, lastCursor) =>
+			invokeFetch(fetchCallback, tracker, (rows, lastCursor) =>
 			{
 				if (callBack)
 				{
@@ -646,6 +724,9 @@ export const createTableScrollHandler = (container, tracker, fetchCallback, thre
 				}
 
 				updateRows(rows, tracker, list, lastCursor);
+				tracker.loading = false;
+			}, () =>
+			{
 				tracker.loading = false;
 			});
 		}

@@ -90,8 +90,22 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		const items = (this.items) ? clone(this.items) : [];
+
+		/**
+		 * Skeleton requires a row layout function; without one the list
+		 * would render blank while hasItems is locked to true (no rows,
+		 * no empty state), so treat it as disabled and warn the developer.
+		 */
 		// @ts-ignore
-		const isSkeletonEnabled = this.skeleton && items.length === 0;
+		const hasSkeletonRow = (this.skeleton && typeof this.skeleton.row === 'function');
+		// @ts-ignore
+		if (this.skeleton && !hasSkeletonRow && items.length === 0)
+		{
+			// @ts-ignore
+			console.warn('[organisms] List skeleton config requires a `row` function. Skeleton disabled.', this.skeleton);
+		}
+
+		const isSkeletonEnabled = (hasSkeletonRow && items.length === 0);
 		if (isSkeletonEnabled)
 		{
 			return new Data({
@@ -293,8 +307,16 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		this.checkHasAddedItems();
+
+		/**
+		 * Silently patch hasItems on both stage and attributes so the
+		 * persisted value survives into the next mount without queuing a
+		 * reactive publish on a component that is being torn down.
+		 */
 		// @ts-ignore
-		this.data.hasItems = this.defaultHasItemValue;
+		this.data.stage.hasItems = this.defaultHasItemValue;
+		// @ts-ignore
+		this.data.attributes.hasItems = this.defaultHasItemValue;
 
 		// When persist is enabled the item data is intentionally kept alive so
 		// the list can show the previous results immediately on resume. However
@@ -716,6 +738,11 @@ export const List = Jot(
 			return;
 		}
 
+		// Clear skeleton placeholders first so the diff below compares
+		// against real item data instead of rendered layout objects.
+		// @ts-ignore
+		this.removeSkeleton();
+
 		newItems = clone(newItems);
 
 		// @ts-ignore
@@ -769,6 +796,11 @@ export const List = Jot(
 			return;
 		}
 
+		// Clear skeleton placeholders first so the diff below compares
+		// against real item data instead of rendered layout objects.
+		// @ts-ignore
+		this.removeSkeleton();
+
 		newItems = clone(newItems);
 
 		// @ts-ignore
@@ -817,6 +849,11 @@ export const List = Jot(
 		{
 			return;
 		}
+
+		// Clear skeleton placeholders first so the diff below compares
+		// against real item data instead of rendered layout objects.
+		// @ts-ignore
+		this.removeSkeleton();
 
 		// @ts-ignore
 		const updatingItems = clone(updatedItems);

@@ -30,5 +30,6 @@ export class IntervalTimer extends Timer
 	{
 		// @ts-ignore
 		globalThis.clearInterval(this.timer);
+		this.timer = null;
 	}
 }

@@ -71,6 +71,7 @@ export class Timer
 	{
 		// @ts-ignore
 		globalThis.clearTimeout(this.timer);
+		this.timer = null;
 	}
 
 	/**

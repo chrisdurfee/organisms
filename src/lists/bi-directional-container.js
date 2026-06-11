@@ -1,36 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { createScrollHandler, fetchAndRefresh, getNewestId, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
-
-/**
- * This will reset the tracker and fetch new data.
- *
- * @param {Function} fetchCallback
- * @param {PaginationTracker} tracker
- * @param {object} list
- * @returns {Function}
- */
-const setupResetCallback = (fetchCallback, tracker, list) =>
-{
-	return () =>
-	{
-		fetchAndRefresh(fetchCallback, tracker, list);
-	};
-};
-
-/**
- * This will add the refresh method to the list.
- *
- * @param {Function} fetchCallback
- * @param {PaginationTracker} tracker
- * @param {object} parent
- * @param {string} listCache
- */
-const addRefreshMethod = (fetchCallback, tracker, parent, listCache) =>
-{
-	parent[listCache].refresh = setupResetCallback(fetchCallback, tracker, parent[listCache]);
-};
+import { addRefreshMethod, createScrollHandler, getListFromParent, invokeFetch, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
 
 /**
  * A BiDirectionalContainer component that supports both backward (older) and forward (newer)
@@ -173,11 +144,17 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				// would cause the initial fetch to continue rather than restart.
 				tracker.reset();
 
+				// @ts-ignore
+				const list = getListFromParent(parent, props.listCache);
+				if (!list)
+				{
+					return;
+				}
+
 				/**
 				 * This will add the refresh method to the list.
 				 */
-				// @ts-ignore
-				addRefreshMethod(fetchCallback, tracker, parent, props.listCache);
+				addRefreshMethod(fetchCallback, tracker, list);
 
 				/**
 				 * Expose a tracker-only reset so that List components with
@@ -186,38 +163,7 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * next fetch (on resume/recreate) always starts from cursor=null
 				 * rather than the last loaded cursor.
 				 */
-				// @ts-ignore
-				parent[props.listCache].resetPagination = () => tracker.reset();
-
-				/**
-				 * This will request the first fetch.
-				 */
-				handleScroll(null, parent, () =>
-				{
-					// @ts-ignore
-					const list = parent[props.listCache];
-					list.reset();
-
-					// For 'up' direction (chat), ensure newestId is set from the loaded items
-					if (scrollDirection === 'up')
-					{
-						// Get the newest ID by detecting sort order
-						const items = list.data?.items || list.data?.rows || [];
-						if (tracker.newestId === null)
-						{
-							const newestId = getNewestId(items);
-							if (newestId !== null)
-							{
-								tracker.updateNewest(newestId);
-							}
-						}
-
-						list.scrollToBottom();
-					}
-				});
-
-				// @ts-ignore
-				const list = parent[props.listCache];
+				list.resetPagination = () => tracker.reset();
 
 				/**
 				 * Add method to manually fetch newer items (useful for polling).
@@ -230,41 +176,58 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				{
 					// Allow fetching if we're not already loading
 					// Don't require hasNewerData to be true (it starts as false)
-					if (!tracker.loadingNewer)
+					if (tracker.loadingNewer)
 					{
-						tracker.loadingNewer = true;
-						fetchNewerCallback(tracker, (rows, newestId) =>
-						{
-							if (rows && rows.length > 0)
-							{
-								// Direction determines where to add new items
-								if (scrollDirection === 'up')
-								{
-									// Chat: new messages at bottom
-									// Use append instead of updateRows to avoid affecting pagination tracker
-									list.append(rows);
-								}
-								else
-								{
-									// Feed: new items at top
-									// Use prepend instead of prependRows to avoid affecting pagination tracker
-									list.prepend(rows);
-								}
-
-								// Update newest ID tracker if available
-								if (newestId !== null)
-								{
-									tracker.updateNewest(newestId);
-								}
-							}
-							tracker.loadingNewer = false;
-
-							if (shouldScroll && scrollDirection === 'up')
-							{
-								list.scrollToBottom();
-							}
-						});
+						return;
 					}
+
+					/**
+					 * When polling without a since-cursor the server may return
+					 * rows that are already in the list. Remember this so the
+					 * response can be merged (deduped by key) instead of
+					 * blindly inserted, which would show duplicate rows.
+					 */
+					const hadNullCursor = (tracker.newestId === null);
+
+					tracker.loadingNewer = true;
+					invokeFetch(fetchNewerCallback, tracker, (rows, newestId) =>
+					{
+						if (rows && rows.length > 0)
+						{
+							const appendNew = (scrollDirection === 'up');
+							if (hadNullCursor && list.key)
+							{
+								// Merge dedupes by key: existing rows are updated
+								// in place, only truly new rows are inserted.
+								list.merge(rows, appendNew);
+							}
+							else if (appendNew)
+							{
+								// Chat: new messages at bottom
+								list.append(rows);
+							}
+							else
+							{
+								// Feed: new items at top
+								list.prepend(rows);
+							}
+
+							// Update newest ID tracker if available
+							if (newestId !== null)
+							{
+								tracker.updateNewest(newestId);
+							}
+						}
+						tracker.loadingNewer = false;
+
+						if (shouldScroll && scrollDirection === 'up')
+						{
+							list.scrollToBottom();
+						}
+					}, () =>
+					{
+						tracker.loadingNewer = false;
+					});
 				};
 
 				/**
@@ -280,11 +243,11 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				/**
 				 * Add method to scroll to bottom (useful for chat interfaces).
 				 * This can be called after fetching new messages to keep user at bottom.
-				 * Uses onFlush to wait for batched UI updates.
+				 * Uses onFlush to wait for batched UI updates when available.
 				 */
 				list.scrollToBottom = () =>
 				{
-					list.onFlush(() =>
+					const scroll = () =>
 					{
 						if (container === globalThis)
 						{
@@ -295,8 +258,35 @@ export const BiDirectionalContainer = Atom((props, children) =>
 
 						// @ts-ignore
 						container.scrollTop = container.scrollHeight;
-					});
+					};
+
+					if (typeof list.onFlush === 'function')
+					{
+						list.onFlush(scroll);
+						return;
+					}
+
+					requestAnimationFrame(scroll);
 				};
+
+				/**
+				 * This will request the first fetch. This runs after all list
+				 * methods are attached so a synchronously-resolving fetch can
+				 * safely call scrollToBottom(). The scroll handler sets
+				 * tracker.newestId from the initial page for both directions,
+				 * so fetchNew() never has to poll with a null cursor.
+				 */
+				handleScroll(null, parent, () =>
+				{
+					list.reset();
+
+					// For 'up' direction (chat), keep the view pinned to the
+					// newest messages at the bottom after the initial load.
+					if (scrollDirection === 'up')
+					{
+						list.scrollToBottom();
+					}
+				});
 			},
 
 			/**

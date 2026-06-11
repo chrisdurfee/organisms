@@ -15,13 +15,23 @@ const Watcher = (attr, value) => ({
 });
 
 /**
+ * This will escape regex special characters in a path so paths
+ * containing metacharacters (e.g. "(", "?", "+") cannot throw or
+ * mismatch when building the active-route pattern.
+ *
+ * @param {string} path
+ * @returns {string}
+ */
+const escapeRegExp = (path) => String(path).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
  * This will check if the path is active.
  *
  * @param {string} path
  * @param {string} url
  * @returns {boolean}
  */
-const iSActive = (path, url) => new RegExp('^' + path + '($|#|/|\\.).*').test(url);
+const isActive = (path, url) => new RegExp('^' + escapeRegExp(path) + '($|#|/|\\.).*').test(url);
 
 /**
  * NavLink
@@ -138,7 +148,7 @@ export class NavLink extends Component
             callBack: (value, ele) =>
             {
                 const path = ele.pathname + ele.hash;
-				const selected = exact? (value === path) : (iSActive(ele.pathname, value));
+				const selected = exact? (value === path) : (isActive(ele.pathname, value));
                 this.update(selected);
             }
         });
