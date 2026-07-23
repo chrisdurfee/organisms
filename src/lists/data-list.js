@@ -26,6 +26,16 @@ export const DataList = Atom((props) =>
 {
 	// @ts-ignore
 	const cache = props.cache ?? 'list';
+
+	/**
+	 * Persist inheritance requires an explicit `cache` name: the persist
+	 * token is derived from the cache, so lists on the default 'list'
+	 * slot would collide on one token and resume each other's scope.
+	 * Cacheless lists only persist when explicitly asked.
+	 */
+	// @ts-ignore
+	const persist = props.persist ?? (props.cache ? null : false);
+
 	return DataContainer(
 		{
 			listCache: cache,
@@ -60,6 +70,7 @@ export const DataList = Atom((props) =>
 				skeleton: props.skeleton || null,
 				// @ts-ignore
 				linkParent: props.linkParent || false,
+				persist,
 				// @ts-ignore
 				rowItem: props.rowItem
 			})

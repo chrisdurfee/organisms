@@ -22,6 +22,7 @@ import { List } from "./list.js";
  * @property {string} [props.cache] - The cache name to use.
  * @property {boolean} [props.linkParent] - Whether to link the parent data.
  * @property {boolean} [props.persist] - Whether to keep items alive on destroy (resets cursor automatically).
+ *   Defaults to inheriting from the parent scope; pass `false` to opt out.
  * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
  * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the trigger edge
  *   at which to prefetch the next page. Defaults to one viewport height.
@@ -31,6 +32,22 @@ export const ScrollableList = Atom((props) =>
 {
 	// @ts-ignore
 	const cache = props.cache ?? 'list';
+
+	/**
+	 * Persistence is inherited from the parent scope by default
+	 * (matching DataList and DynamicList) so a list under a persisting
+	 * page resumes its rows instantly instead of re-showing the
+	 * skeleton. An explicit `persist: false` still opts out.
+	 *
+	 * Inheritance requires an explicit `cache` name: the persist token
+	 * is derived from the cache, so lists on the default 'list' slot
+	 * would all collide on one token (and one parent cache slot) and
+	 * resume EACH OTHER's rows/scroll wiring — duplicated rows and dead
+	 * pagination. Cacheless lists only persist when explicitly asked.
+	 */
+	// @ts-ignore
+	const persist = props.persist ?? (props.cache ? null : false);
+
 	return BiDirectionalContainer(
 		{
 			listCache: cache,
@@ -73,8 +90,7 @@ export const ScrollableList = Atom((props) =>
 				rowItem: props.rowItem,
 				// @ts-ignore
 				linkParent: props.linkParent ?? false,
-				// @ts-ignore
-				persist: props.persist ?? false,
+				persist,
 				isDynamic: true
 			})
 		]

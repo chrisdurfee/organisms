@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, createScrollHandler, getListFromParent, invokeFetch, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
+import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRows, invokeFetch, revalidateResumedRows, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
 
 /**
  * A BiDirectionalContainer component that supports both backward (older) and forward (newer)
@@ -124,6 +124,20 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	// @ts-ignore
 	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache, props.loadMoreThreshold);
 
+	/**
+	 * The bound listener attached to the scroll container. Attached in
+	 * onCreated and removed in onDestroyed using the SAME reference.
+	 * The `addEvent` directive cannot be used here: it wraps the callback
+	 * to inject the parent, so `Events.off(..., handleScroll)` never
+	 * matched the wrapped function and the listener leaked. A leaked
+	 * listener from a destroyed list kept fetching page one (its tracker
+	 * was re-armed by resetPagination) and appended duplicate rows into
+	 * the replacement list registered under the same cache name.
+	 *
+	 * @type {function|null}
+	 */
+	let activeScrollListener = null;
+
 	return Div(
 		{
 			// @ts-ignore
@@ -138,6 +152,13 @@ export const BiDirectionalContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
+				/**
+				 * Attach the scroll listener with a stable reference so
+				 * onDestroyed can remove this exact function.
+				 */
+				activeScrollListener = (e) => handleScroll(e, parent);
+				Events.on('scroll', container, activeScrollListener, { passive: true });
+
 				// Always start from a clean pagination state on mount. If the
 				// Atom closure is reused across navigations the tracker may
 				// still hold the offset/cursor from the previous visit, which
@@ -270,6 +291,19 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				};
 
 				/**
+				 * A persisted list that resumed its rows revalidates them
+				 * in place (stale-while-revalidate) instead of resetting to
+				 * page one — the resumed rows and scroll position stay put
+				 * while one request refreshes the loaded window. Chat-style
+				 * 'up' lists keep the classic pinned-to-bottom init.
+				 */
+				if (scrollDirection === 'down' && hasResumedRows(list))
+				{
+					revalidateResumedRows(fetchCallback, tracker, list);
+					return;
+				}
+
+				/**
 				 * This will request the first fetch. This runs after all list
 				 * methods are attached so a synchronously-resolving fetch can
 				 * safely call scrollToBottom(). The scroll handler sets
@@ -299,13 +333,12 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				/**
 				 * This will remove the scroll event when the atom is destroyed.
 				 */
-				Events.off('scroll', container, handleScroll);
-			},
-
-			/**
-			 * This will add the scroll event to the container for loading older items.
-			 */
-			addEvent: ['scroll', container, handleScroll, { passive: true }],
+				if (activeScrollListener)
+				{
+					Events.off('scroll', container, activeScrollListener);
+					activeScrollListener = null;
+				}
+			}
 		},
 		children
 	);

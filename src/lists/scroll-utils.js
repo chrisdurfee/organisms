@@ -527,6 +527,136 @@ export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 };
 
 /**
+ * Check whether a list resumed persisted rows that can be revalidated
+ * in place. Skeleton placeholder items are rendered layouts, not row
+ * data, so a list still showing its skeleton has nothing to revalidate.
+ *
+ * @param {object} list
+ * @returns {boolean}
+ */
+export const hasResumedRows = (list) =>
+{
+	if (!list || list.persist !== true)
+	{
+		return false;
+	}
+
+	if (list.data && list.data.get('showSkeleton'))
+	{
+		return false;
+	}
+
+	const rows = (typeof list.getRows === 'function') ? list.getRows() : null;
+	return (Array.isArray(rows) && rows.length > 0);
+};
+
+/**
+ * Revalidate rows resumed from a persisted list without resetting the
+ * list (stale-while-revalidate).
+ *
+ * The classic mount flow (reset + fetch page one) is jarring after a
+ * resume: the restored rows paint, then get wiped down to the first
+ * page, the scroll position collapses, and any scroll restorer has to
+ * re-page all the way back down. Instead, this keeps every resumed row
+ * on screen and issues ONE request covering the whole loaded window
+ * (offset 0, limit = resumed row count). The response is merged in
+ * place by key — rows the user edited elsewhere update, unchanged rows
+ * are untouched — so there is no flash and the scroll position never
+ * moves.
+ *
+ * Rows added or deleted server-side while the user was away are NOT
+ * inserted or removed during an in-place refresh: the server may cap
+ * the requested limit below the resumed count, which would make
+ * missing keys indistinguishable from truncation. Two exceptions swap
+ * the window wholesale because the resumed rows are provably stale:
+ * an EMPTY first page (query has no rows — clear to the empty state),
+ * and a first page with NO key overlap against the resumed rows (the
+ * resumed window belongs to a different result set, e.g. a persist
+ * token shared across entities).
+ *
+ * Pagination continues after the resumed window: the offset is set to
+ * the resumed row count, and the response cursor is only adopted when
+ * the response covered the full window (a truncated response's cursor
+ * would rewind cursor-based feeds and duplicate rows).
+ *
+ * @param {Function} fetchCallback
+ * @param {PaginationTracker} tracker
+ * @param {object} list
+ * @returns {void}
+ */
+export const revalidateResumedRows = (fetchCallback, tracker, list) =>
+{
+	const resumed = list.getRows();
+	const count = resumed.length;
+
+	tracker.reset();
+	tracker.loading = true;
+
+	const windowTracker = new PaginationTracker(0, count);
+	invokeFetch(fetchCallback, windowTracker, (rows, lastCursor) =>
+	{
+		tracker.loading = false;
+
+		/**
+		 * The server says this query's first page is empty — the
+		 * resumed rows cannot belong to it (e.g. they were persisted
+		 * under a token another entity's list also resolves to). Clear
+		 * them so the empty state shows instead of another list's data.
+		 */
+		if (!rows || rows.length === 0)
+		{
+			list.reset();
+			tracker.hasMoreData = false;
+			list.updateHasItems();
+			return;
+		}
+
+		/**
+		 * No key overlap between the resumed window and the fresh first
+		 * page means the resumed rows belong to a DIFFERENT result set —
+		 * swap wholesale instead of merging, so stale rows never linger
+		 * under fresh ones.
+		 */
+		const key = list.key;
+		const resumedKeys = new Set(resumed.map((row) => row && row[key]));
+		const overlaps = rows.some((row) => row && resumedKeys.has(row[key]));
+		if (!overlaps)
+		{
+			list.reset();
+			updateRows(rows, tracker, list, lastCursor ?? null);
+
+			const freshNewest = getNewestId(rows, key);
+			if (freshNewest !== null)
+			{
+				tracker.updateNewest(freshNewest);
+			}
+			return;
+		}
+
+		/**
+		 * Genuine resume: refresh the resumed rows in place and continue
+		 * pagination from the end of the window.
+		 */
+		list.modify(rows);
+		tracker.currentOffset = count;
+
+		if (rows.length >= count)
+		{
+			tracker.lastCursor = lastCursor ?? null;
+		}
+
+		const newestId = getNewestId(rows, key);
+		if (newestId !== null)
+		{
+			tracker.updateNewest(newestId);
+		}
+	}, () =>
+	{
+		tracker.loading = false;
+	});
+};
+
+/**
  * Fetch and prepend newer items to the list.
  * This is designed to be called manually (e.g., via timer/polling) rather than on scroll.
  *

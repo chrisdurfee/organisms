@@ -27,6 +27,16 @@ export const DynamicList = Atom((props) =>
 {
 	// @ts-ignore
 	const cache = props.cache ?? 'list';
+
+	/**
+	 * Persist inheritance requires an explicit `cache` name: the persist
+	 * token is derived from the cache, so lists on the default 'list'
+	 * slot would collide on one token and resume each other's scope.
+	 * Cacheless lists only persist when explicitly asked.
+	 */
+	// @ts-ignore
+	const persist = props.persist ?? (props.cache ? null : false);
+
 	return DynamicContainer(
 		{
 			listCache: cache,
@@ -65,6 +75,7 @@ export const DynamicList = Atom((props) =>
 				rowItem: props.rowItem,
 				// @ts-ignore
 				linkParent: props.linkParent ?? false,
+				persist,
 				isDynamic: true
 			})
 		]

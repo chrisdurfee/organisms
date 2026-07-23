@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, getListFromParent, setupFetchCallback } from "./scroll-utils.js";
+import { addRefreshMethod, getListFromParent, hasResumedRows, revalidateResumedRows, setupFetchCallback } from "./scroll-utils.js";
 
 /**
  * A DataContainer component that updates using the provided data.
@@ -56,6 +56,19 @@ export const DataContainer = Atom((props, children) =>
 				 * without also wiping the cached item data.
 				 */
 				list.resetPagination = () => tracker.reset();
+
+				/**
+				 * A persisted list that resumed its rows revalidates them in
+				 * place instead of resetting to page one, so the resumed rows
+				 * never flash. Explicit list.refresh() calls from app code
+				 * keep the classic reset semantics.
+				 */
+				if (hasResumedRows(list))
+				{
+					revalidateResumedRows(fetchCallback, tracker, list);
+					return;
+				}
+
 				list.refresh();
 			}
 		},

@@ -40,6 +40,16 @@ export const ScrollableContainer = Atom((props, children) =>
 	// @ts-ignore
 	const handleScroll = createScrollHandler(container, tracker, fetchCallback, 'down', props.listCache, props.loadMoreThreshold);
 
+	/**
+	 * The bound listener attached to the scroll container. Attached in
+	 * onCreated and removed in onDestroyed using the SAME reference —
+	 * the `addEvent` directive wraps the callback to inject the parent,
+	 * which breaks Events.off matching and leaks the listener.
+	 *
+	 * @type {function|null}
+	 */
+	let activeScrollListener = null;
+
 	return Div(
 		{
 			// @ts-ignore
@@ -54,6 +64,13 @@ export const ScrollableContainer = Atom((props, children) =>
 			 */
 			onCreated(ele, parent)
 			{
+				/**
+				 * Attach the scroll listener with a stable reference so
+				 * onDestroyed can remove this exact function.
+				 */
+				activeScrollListener = (e) => handleScroll(e, parent);
+				Events.on('scroll', container, activeScrollListener, { passive: true });
+
 				// @ts-ignore
 				const list = getListFromParent(parent, props.listCache);
 				if (!list)
@@ -93,13 +110,12 @@ export const ScrollableContainer = Atom((props, children) =>
 				/**
 				 * This will remove the scroll event when the atom is destroyed.
 				 */
-				Events.off('scroll', container, handleScroll);
-			},
-
-			/**
-			 * This will add the scroll event to the container.
-			 */
-			addEvent: ['scroll', container, handleScroll, { passive: true }],
+				if (activeScrollListener)
+				{
+					Events.off('scroll', container, activeScrollListener);
+					activeScrollListener = null;
+				}
+			}
 		},
 		children
 	);
