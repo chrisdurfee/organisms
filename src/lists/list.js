@@ -79,6 +79,19 @@ export const List = Jot(
 		// Initialize element cache for O(1) lookups by key
 		// @ts-ignore
 		this.elementCache = new Map();
+
+		/**
+		 * Both indexes are rebuilt in a single pass when a lookup misses
+		 * while they are stale, so a batch of m lookups over n rows costs
+		 * O(n + m) instead of the O(n * m) it costs to scan per lookup.
+		 */
+		// @ts-ignore
+		this.elementCacheStale = true;
+
+		// @ts-ignore
+		this.itemIndexCache = new Map();
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
 	},
 
 	/**
@@ -162,11 +175,21 @@ export const List = Jot(
 
 		// @ts-ignore
 		this.data.set('showSkeleton', false);
-		// Silently reset items so append/prepend start from a clean state
+
+		/**
+		 * Silently reset items so append/prepend start from a clean
+		 * state. Both stores share one array because the in-place array
+		 * mutations elsewhere (data.delete splices the staged array) rely
+		 * on the two staying aliased.
+		 */
+		const items = [];
 		// @ts-ignore
-		this.data.attributes.items = [];
+		this.data.attributes.items = items;
 		// @ts-ignore
-		this.data.stage.items = [];
+		this.data.stage.items = items;
+		// @ts-ignore
+		this.clearIndexes();
+
 		// @ts-ignore
 		if (this.listContainer)
 		{
@@ -262,7 +285,19 @@ export const List = Jot(
 		{
 			parentValue = parentData.get('hasItems');
 			// @ts-ignore
-			this.data.link(parentData, 'hasItems');
+			const token = this.data.link(parentData, 'hasItems');
+
+			/**
+			 * Keep the handles needed to release this link. Data.unlink()
+			 * cannot do it: its emptiness check reports every link map as
+			 * empty and returns before removing anything, so without an
+			 * explicit release the parent keeps publishing hasItems into
+			 * a destroyed list on every change.
+			 */
+			// @ts-ignore
+			this.parentLinkData = parentData;
+			// @ts-ignore
+			this.parentLinkToken = token;
 		}
 		// @ts-ignore
 		else if (this.isDynamic === true)
@@ -270,6 +305,50 @@ export const List = Jot(
 			return undefined;
 		}
 		return parentValue;
+	},
+
+	/**
+	 * This will release the hasItems link created in linkParentData().
+	 *
+	 * @returns {void}
+	 */
+	unlinkParentData()
+	{
+		// @ts-ignore
+		const parentData = this.parentLinkData;
+		if (!parentData)
+		{
+			return;
+		}
+
+		// @ts-ignore
+		parentData.off('hasItems', this.parentLinkToken);
+
+		/**
+		 * The reverse subscription lives on this list's own data, which
+		 * is discarded with the list, but the parent's link map holds
+		 * both its token and a strong reference to that data. Drop the
+		 * entry by data id so the whole item graph can be collected.
+		 */
+		const links = parentData.links;
+		// @ts-ignore
+		if (links && typeof links.forEach === 'function')
+		{
+			// @ts-ignore
+			const dataId = this.data.getDataId();
+			links.forEach((linked, linkToken) =>
+			{
+				if (linked && typeof linked.getDataId === 'function' && linked.getDataId() === dataId)
+				{
+					links.delete(linkToken);
+				}
+			});
+		}
+
+		// @ts-ignore
+		this.parentLinkData = null;
+		// @ts-ignore
+		this.parentLinkToken = null;
 	},
 
 	/**
@@ -329,6 +408,25 @@ export const List = Jot(
 			// @ts-ignore
 			this.resetPagination();
 		}
+
+		/**
+		 * Persisting lists keep their data alive for the next mount, so
+		 * the link is released on the same condition the framework uses
+		 * for its own unlink.
+		 */
+		// @ts-ignore
+		if (this.persist !== true)
+		{
+			// @ts-ignore
+			this.unlinkParentData();
+		}
+
+		/**
+		 * Drop the node index so a destroyed list does not keep its
+		 * detached row elements alive.
+		 */
+		// @ts-ignore
+		this.clearIndexes();
 	},
 
 	/**
@@ -352,7 +450,14 @@ export const List = Jot(
 				// @ts-ignore
 				class: `list ${this.class || ''}`,
 				onSet: ['hasItems', { hidden: false }],
-				for: ['items', rowCallBack]
+				/**
+				 * The explicit-data form with scope=false skips the
+				 * per-row scoped Data allocation (a full Data instance
+				 * plus two link subscriptions per item key) that row()
+				 * never uses.
+				 */
+				// @ts-ignore
+				for: [this.data, 'items', rowCallBack, false]
 			})
 		]);
 	},
@@ -454,10 +559,11 @@ export const List = Jot(
 
 		// Remove from element cache
 		// @ts-ignore
-		if (this.elementCache) {
-			// @ts-ignore
-			this.elementCache.delete(String(keyValue));
-		}
+		this.elementCache.delete(String(keyValue));
+
+		// The splice above shifted every index after the removed row.
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
 
 		// Update hasItems after deletion
 		// @ts-ignore
@@ -515,33 +621,91 @@ export const List = Jot(
 		const layout = this.row(item, index);
 		if (oldRow && layout)
 		{
-			ChildHelper.replace(layout, oldRow, this);
+			const newRow = ChildHelper.replace(layout, oldRow, this);
+
+			/**
+			 * The replacement carries the same key, so point the index at
+			 * it instead of leaving an entry that will force a full DOM
+			 * scan on the next lookup.
+			 */
+			// @ts-ignore
+			if (newRow)
+			{
+				// @ts-ignore
+				this.elementCache.set(String(keyValue), newRow);
+			}
+			else
+			{
+				// @ts-ignore
+				this.elementCache.delete(String(keyValue));
+			}
 		}
 	},
 
 	/**
 	 * This will remove items from the list.
 	 *
+	 * The removals are applied in one pass: the item array is filtered
+	 * once and each row element is resolved through the key index, so the
+	 * cost is the list length plus the number of removed rows instead of
+	 * their product.
+	 *
 	 * @param {array} items
 	 * @returns {void}
 	 */
 	remove(items)
 	{
-		if (!Array.isArray(items))
+		if (!Array.isArray(items) || items.length === 0)
 		{
 			return;
 		}
 
-		/**
-		 * This will get the deleted rows.
-		 */
-		const length = items.length;
-		for (let i = 0; i < length; i++)
+		// @ts-ignore
+		const key = this.key;
+		const removedKeys = new Set();
+		for (let i = 0, length = items.length; i < length; i++)
 		{
 			const item = items[i];
-			// @ts-ignore
-			this.delete(item[this.key]);
+			if (item)
+			{
+				removedKeys.add(item[key]);
+			}
 		}
+
+		// @ts-ignore
+		const existingItems = this.data.get('items') || [];
+		const remaining = [];
+		for (let i = 0, length = existingItems.length; i < length; i++)
+		{
+			const item = existingItems[i];
+			if (!item || !removedKeys.has(item[key]))
+			{
+				remaining.push(item);
+				continue;
+			}
+
+			// @ts-ignore
+			const rowElement = this.findRowElementByKey(item[key]);
+			if (rowElement)
+			{
+				ChildHelper.remove(rowElement);
+			}
+
+			// @ts-ignore
+			this.elementCache.delete(String(item[key]));
+		}
+
+		/**
+		 * The DOM is already up to date, so patch the store silently. A
+		 * reactive set would rebuild every remaining row through the for:
+		 * directive.
+		 */
+		// @ts-ignore
+		this.data.attributes.items = remaining;
+		// @ts-ignore
+		this.data.stage.items = remaining;
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
 
 		// Update hasItems after removal
 		// @ts-ignore
@@ -570,10 +734,162 @@ export const List = Jot(
 		// @ts-ignore
 		this.removeSkeleton();
 		const safeRows = Array.isArray(rows) ? rows : [];
+
+		/**
+		 * A keyed reconcile only touches the rows that actually changed.
+		 * The reactive fallback republishes the whole array, which makes
+		 * the for: directive tear down and rebuild every row.
+		 */
 		// @ts-ignore
-		this.data.set('items', safeRows);
+		if (this.reconcileRows(safeRows) === false)
+		{
+			// @ts-ignore
+			this.clearIndexes();
+			// @ts-ignore
+			this.data.set('items', safeRows);
+		}
+
 		// @ts-ignore
 		this.updateHasItems();
+	},
+
+	/**
+	 * Applies a new item array to the DOM by key, reusing the row
+	 * elements that are already rendered.
+	 *
+	 * Unchanged rows are left completely untouched, changed rows are
+	 * rebuilt in place, removed rows are detached and new rows are built
+	 * at their target position, so the work is proportional to what
+	 * changed rather than to the list length. Reusing the nodes also
+	 * preserves per-row state such as focus and scroll offset.
+	 *
+	 * A stable identity per row is required, so lists without a `key`,
+	 * lists that group rows with dividers and lists that have not
+	 * rendered yet fall back to the reactive rebuild.
+	 *
+	 * @param {Array<object>} newItems
+	 * @returns {boolean} False when the list cannot be reconciled.
+	 */
+	reconcileRows(newItems)
+	{
+		// @ts-ignore
+		const key = this.key;
+		// @ts-ignore
+		const container = this.listContainer;
+		// @ts-ignore
+		if (!key || !container || this.rowDivider || typeof this.rowItem !== 'function')
+		{
+			return false;
+		}
+
+		/**
+		 * Reconciling by key is only sound when every row carries a
+		 * unique, defined key.
+		 */
+		const targetKeys = new Set();
+		for (let i = 0, length = newItems.length; i < length; i++)
+		{
+			const item = newItems[i];
+			const keyValue = (item)? item[key] : undefined;
+			if (keyValue === undefined || keyValue === null)
+			{
+				return false;
+			}
+
+			const keyString = String(keyValue);
+			if (targetKeys.has(keyString))
+			{
+				return false;
+			}
+			targetKeys.add(keyString);
+		}
+
+		// @ts-ignore
+		const oldItems = this.data.get('items') || [];
+
+		/**
+		 * diff() returns one entry per new item, in order, so the status
+		 * of row i is changes[i].
+		 */
+		const changes = DataHelper.diff(oldItems, newItems, key).changes;
+
+		// @ts-ignore
+		const map = this.indexRowElements();
+
+		/**
+		 * Detach the rows that are gone first so the placement pass below
+		 * only walks nodes that are being kept.
+		 */
+		map.forEach((element, keyString) =>
+		{
+			if (!targetKeys.has(keyString))
+			{
+				ChildHelper.remove(element);
+				map.delete(keyString);
+			}
+		});
+
+		/**
+		 * `cursor` is the node currently sitting at the next target
+		 * position. Every node before it has already been placed, so a
+		 * kept row is either already the cursor (no DOM write at all) or
+		 * gets moved in front of it.
+		 */
+		let cursor = container.firstChild;
+		for (let i = 0, length = newItems.length; i < length; i++)
+		{
+			const item = newItems[i];
+			const keyString = String(item[key]);
+			let element = map.get(keyString);
+
+			if (!element)
+			{
+				// @ts-ignore
+				const layout = this.row(item, i);
+				const inserted = ChildHelper.insertBefore(layout, container, cursor, this);
+				if (inserted)
+				{
+					map.set(keyString, inserted);
+				}
+				continue;
+			}
+
+			const wasCursor = (element === cursor);
+			const change = changes[i];
+			if (!change || change.status !== 'unchanged')
+			{
+				// @ts-ignore
+				const layout = this.row(item, i);
+				const replacement = (layout)? ChildHelper.replace(layout, element, this) : null;
+				if (replacement)
+				{
+					element = replacement;
+					map.set(keyString, element);
+				}
+			}
+
+			if (wasCursor || element === cursor)
+			{
+				cursor = element.nextSibling;
+				continue;
+			}
+
+			container.insertBefore(element, cursor);
+		}
+
+		/**
+		 * The DOM already matches, so patch the store silently: a
+		 * reactive set would trigger the for: directive and rebuild every
+		 * row that was just reused.
+		 */
+		// @ts-ignore
+		this.data.attributes.items = newItems;
+		// @ts-ignore
+		this.data.stage.items = newItems;
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
+
+		return true;
 	},
 
 	/**
@@ -595,11 +911,14 @@ export const List = Jot(
 	reset()
 	{
 		// Clear both stage and attributes so data.get('items') returns [].
-		// append()/prepend() patch both; reset() must match to avoid stale reads.
+		// append()/prepend() patch both; reset() must match to avoid stale
+		// reads. One shared array keeps the two stores aliased, which the
+		// in-place array mutations elsewhere rely on.
+		const items = [];
 		// @ts-ignore
-		this.data.stage.items = [];
+		this.data.stage.items = items;
 		// @ts-ignore
-		this.data.attributes.items = [];
+		this.data.attributes.items = items;
 		// @ts-ignore
 		ChildHelper.removeAll(this.listContainer);
 
@@ -619,12 +938,9 @@ export const List = Jot(
 		// @ts-ignore
 		this.hasTrailingDivider = false;
 
-		// Clear element cache
+		// Clear the key indexes
 		// @ts-ignore
-		if (this.elementCache) {
-			// @ts-ignore
-			this.elementCache.clear();
-		}
+		this.clearIndexes();
 
 		// @ts-ignore
 		if (this.rowDivider)
@@ -706,6 +1022,33 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.stage.items = newItems;
 
+		/**
+		 * Appending never shifts an existing index, so extend the key
+		 * index in place rather than forcing a full rebuild on the next
+		 * lookup. Interleaved appends and lookups (merge/mingle) would
+		 * otherwise rebuild it once per added row.
+		 */
+		// @ts-ignore
+		if (this.itemIndexCacheStale === false)
+		{
+			// @ts-ignore
+			const map = this.itemIndexCache;
+			for (let i = 0; i < length; i++)
+			{
+				const item = items[i];
+				// @ts-ignore
+				if (item && !map.has(item[this.key]))
+				{
+					// @ts-ignore
+					map.set(item[this.key], startIndex + i);
+				}
+			}
+		}
+
+		// The new rows are not in the element index yet.
+		// @ts-ignore
+		this.elementCacheStale = true;
+
 		// Only update hasItems reactively when the state actually needs
 		// to change, to avoid triggering unnecessary batched publishes.
 		// @ts-ignore
@@ -766,14 +1109,32 @@ export const List = Jot(
 		}
 
 		/**
-		 * This will add or update the new rows.
+		 * This will add or update the new rows. Added rows are collected
+		 * and inserted in one batch because each append() copies the whole
+		 * item array, which makes per-row inserts cost O(items * added).
+		 * Divider seams are position sensitive, so those lists keep the
+		 * per-row path.
 		 */
 		const changesLength = changes.changes.length;
+		const added = [];
 		for (let i = 0; i < changesLength; i++)
 		{
 			const row = changes.changes[i];
 			// @ts-ignore
+			if (row.status === 'added' && !this.rowDivider)
+			{
+				added.push(row.item);
+				continue;
+			}
+
+			// @ts-ignore
 			this.replace(row);
+		}
+
+		if (added.length > 0)
+		{
+			// @ts-ignore
+			this.append(added);
 		}
 
 		// Update hasItems after mingling
@@ -814,9 +1175,13 @@ export const List = Jot(
 		const changes = DataHelper.diff(oldItems, newItems, this.key);
 
 		/**
-		 * This will add or update the new rows.
+		 * This will add or update the new rows. Added rows are batched;
+		 * see mingle() for why. A batched prepend reverses the batch, so
+		 * the resulting order matches the per-row path in both
+		 * directions.
 		 */
 		const changesLength = changes.changes.length;
+		const added = [];
 		for (let i = 0; i < changesLength; i++)
 		{
 			const row = changes.changes[i];
@@ -828,7 +1193,20 @@ export const List = Jot(
 			}
 
 			// @ts-ignore
+			if (row.status === 'added' && !this.rowDivider)
+			{
+				added.push(row.item);
+				continue;
+			}
+
+			// @ts-ignore
 			this.replace(row, append);
+		}
+
+		if (added.length > 0)
+		{
+			// @ts-ignore
+			(append)? this.append(added) : this.prepend(added);
 		}
 
 		// Update hasItems after mingling
@@ -990,6 +1368,15 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.stage.items = newItems;
 
+		/**
+		 * Prepending shifts every existing index, and the new rows are
+		 * not in the element index yet.
+		 */
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
+		// @ts-ignore
+		this.elementCacheStale = true;
+
 		// Only update hasItems reactively when the state actually needs
 		// to change. When hasItems is already true, skipping the call
 		// avoids triggering a batched reactive publish that can cause
@@ -1094,6 +1481,65 @@ export const List = Jot(
 	},
 
 	/**
+	 * Empties both key indexes and marks them for a rebuild.
+	 *
+	 * @returns {void}
+	 */
+	clearIndexes()
+	{
+		// @ts-ignore
+		if (this.elementCache)
+		{
+			// @ts-ignore
+			this.elementCache.clear();
+		}
+
+		// @ts-ignore
+		if (this.itemIndexCache)
+		{
+			// @ts-ignore
+			this.itemIndexCache.clear();
+		}
+
+		// @ts-ignore
+		this.elementCacheStale = true;
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
+	},
+
+	/**
+	 * Rebuilds the key to item-index map from the current items.
+	 *
+	 * The first index wins so the result matches the Array.findIndex
+	 * lookup this replaced, including for duplicate keys.
+	 *
+	 * @returns {Map}
+	 */
+	indexItems()
+	{
+		// @ts-ignore
+		const map = this.itemIndexCache;
+		map.clear();
+
+		// @ts-ignore
+		const items = this.data.get('items') || [];
+		// @ts-ignore
+		const key = this.key;
+		for (let i = 0, length = items.length; i < length; i++)
+		{
+			const item = items[i];
+			if (item && !map.has(item[key]))
+			{
+				map.set(item[key], i);
+			}
+		}
+
+		// @ts-ignore
+		this.itemIndexCacheStale = false;
+		return map;
+	},
+
+	/**
 	 * Finds the index of an item in the data array by its key.
 	 *
 	 * @param {*} keyValue
@@ -1101,17 +1547,56 @@ export const List = Jot(
 	 */
 	findIndexByKey(keyValue)
 	{
-		//@ts-ignore
-		const items = this.data.get('items') || [];
-		//@ts-ignore
-		return items.findIndex((item) => item && item[this.key] === keyValue);
+		// @ts-ignore
+		const map = (this.itemIndexCacheStale !== false)? this.indexItems() : this.itemIndexCache;
+		const index = map.get(keyValue);
+		return (index === undefined)? -1 : index;
+	},
+
+	/**
+	 * Indexes every keyed row element in the list container in one pass.
+	 *
+	 * @returns {Map}
+	 */
+	indexRowElements()
+	{
+		// @ts-ignore
+		const map = this.elementCache;
+		map.clear();
+
+		// @ts-ignore
+		const container = this.listContainer;
+		if (!container)
+		{
+			return map;
+		}
+
+		const children = container.children;
+		for (let i = 0, length = children.length; i < length; i++)
+		{
+			const child = children[i];
+			// Skip dividers
+			if (!child.hasAttribute || child.hasAttribute('data-divider'))
+			{
+				continue;
+			}
+
+			const keyString = child.getAttribute('data-row-key');
+			if (keyString !== null && !map.has(keyString))
+			{
+				map.set(keyString, child);
+			}
+		}
+
+		// @ts-ignore
+		this.elementCacheStale = false;
+		return map;
 	},
 
 	/**
 	 * Finds a row DOM element by its key value.
 	 * This is more reliable than finding by index, especially after prepending
 	 * or when dividers are present.
-	 * Now uses element cache for O(1) lookups.
 	 *
 	 * @param {*} keyValue - The key value to find
 	 * @returns {HTMLElement|null} The DOM element, or null if not found
@@ -1125,52 +1610,35 @@ export const List = Jot(
 		}
 
 		const keyString = String(keyValue);
-
-		// Try cache first for O(1) lookup
 		// @ts-ignore
-		if (this.elementCache && this.elementCache.has(keyString))
+		let map = this.elementCache;
+		const cached = map.get(keyString);
+		if (cached)
 		{
 			// @ts-ignore
-			const cached = this.elementCache.get(keyString);
-			// Verify element is still in DOM
-			// @ts-ignore
-			if (cached && this.listContainer.contains(cached))
+			if (this.listContainer.contains(cached))
 			{
 				return cached;
 			}
-			// Remove stale cache entry
+
+			/**
+			 * An indexed element that left the DOM means the container
+			 * was rebuilt behind the index, so re-index before failing.
+			 */
+			map.delete(keyString);
 			// @ts-ignore
-			this.elementCache.delete(keyString);
+			map = this.indexRowElements();
+			return map.get(keyString) ?? null;
 		}
 
-		// Fallback to DOM search and update cache
 		// @ts-ignore
-		const children = this.listContainer.children;
-		const childrenLength = children.length;
-
-		for (let i = 0; i < childrenLength; i++)
+		if (this.elementCacheStale === false)
 		{
-			const child = children[i];
-			// Skip dividers
-			if (child.hasAttribute && child.hasAttribute('data-divider'))
-			{
-				continue;
-			}
-
-			// Check if this row has the matching key
-			if (child.hasAttribute && child.getAttribute('data-row-key') === keyString)
-			{
-				// Update cache
-				// @ts-ignore
-				if (this.elementCache)
-				{
-					// @ts-ignore
-					this.elementCache.set(keyString, child);
-				}
-				return child;
-			}
+			return null;
 		}
 
-		return null;
+		// @ts-ignore
+		map = this.indexRowElements();
+		return map.get(keyString) ?? null;
 	}
 });

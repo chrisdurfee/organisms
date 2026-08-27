@@ -40,6 +40,63 @@ export function resolveThreshold(threshold, metrics)
 }
 
 /**
+ * Wrap a scroll handler so it runs at most once per animation frame.
+ *
+ * Scroll events fire several times per frame during a fling, and every
+ * call reads scrollTop, clientHeight and scrollHeight, which forces a
+ * layout while rows are being inserted. Coalescing to one call per frame
+ * keeps those reads to one per painted frame without changing when a
+ * page load is triggered — the handler always re-reads the live metrics.
+ *
+ * The returned function exposes `cancel()` so the owner can drop a
+ * pending frame when it is destroyed.
+ *
+ * @param {function} callBack
+ * @returns {function}
+ */
+export const rafThrottle = (callBack) =>
+{
+	let frame = null;
+
+	/**
+	 * The queued handler. Arguments are forwarded from the first event of
+	 * the frame; the scroll handlers only use them to identify the parent
+	 * scope, which does not change between events.
+	 *
+	 * @returns {void}
+	 */
+	const throttled = (...args) =>
+	{
+		if (frame !== null)
+		{
+			return;
+		}
+
+		frame = requestAnimationFrame(() =>
+		{
+			frame = null;
+			callBack(...args);
+		});
+	};
+
+	/**
+	 * Drops a queued frame so a destroyed owner is never called back.
+	 *
+	 * @returns {void}
+	 */
+	throttled.cancel = () =>
+	{
+		if (frame !== null)
+		{
+			cancelAnimationFrame(frame);
+			frame = null;
+		}
+	};
+
+	return throttled;
+};
+
+/**
  * Extract the newest ID from an array of rows by detecting sort order.
  * Compares first and last item IDs to determine if data is in ASC or DESC order.
  *

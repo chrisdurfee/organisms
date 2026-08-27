@@ -104,7 +104,16 @@ export class TableBody extends List
 			},
 			// @ts-ignore
 			class: `tbody ${this.class || ''}`,
-			for: ['items', rowCallBack]
+			/**
+			 * The explicit-data form with scope=false skips the per-row
+			 * scoped Data allocation (a full Data instance plus two link
+			 * subscriptions per item key) that row() never uses. Those
+			 * scoped sources are not released on rebuild, so each rebuild
+			 * added subscriptions to this data that every later publish
+			 * had to walk.
+			 */
+			// @ts-ignore
+			for: [this.data, 'items', rowCallBack, false]
 		});
 	}
 };

@@ -123,7 +123,12 @@ export class DataTableBody extends TableBody
 				this.refresh();
 			},
 
-			for: ['items', rowCallBack]
+			/**
+			 * The explicit-data form with scope=false skips the per-row
+			 * scoped Data allocation that row() never uses. See TableBody.
+			 */
+			// @ts-ignore
+			for: [this.data, 'items', rowCallBack, false]
 		});
 	}
 };

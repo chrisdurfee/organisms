@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRows, invokeFetch, revalidateResumedRows, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
+import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRows, invokeFetch, rafThrottle, revalidateResumedRows, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
 
 /**
  * A BiDirectionalContainer component that supports both backward (older) and forward (newer)
@@ -154,9 +154,11 @@ export const BiDirectionalContainer = Atom((props, children) =>
 			{
 				/**
 				 * Attach the scroll listener with a stable reference so
-				 * onDestroyed can remove this exact function.
+				 * onDestroyed can remove this exact function. It is
+				 * coalesced to one call per frame so a fling cannot read
+				 * the scroll metrics several times per painted frame.
 				 */
-				activeScrollListener = (e) => handleScroll(e, parent);
+				activeScrollListener = rafThrottle((e) => handleScroll(e, parent));
 				Events.on('scroll', container, activeScrollListener, { passive: true });
 
 				// Always start from a clean pagination state on mount. If the
@@ -335,6 +337,8 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 */
 				if (activeScrollListener)
 				{
+					// @ts-ignore
+					activeScrollListener.cancel();
 					Events.off('scroll', container, activeScrollListener);
 					activeScrollListener = null;
 				}

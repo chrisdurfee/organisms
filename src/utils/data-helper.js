@@ -43,6 +43,11 @@ export class DataHelper
 		for (let i = 0; i < newLength; i++)
 		{
 			const newItem = newArray[i];
+			if (!newItem)
+			{
+				continue;
+			}
+
 			const keyValue = newItem[key];
 			if (!oldItemsMap.has(keyValue))
 			{
@@ -103,6 +108,11 @@ export class DataHelper
 		for (let i = 0; i < length; i++)
 		{
 			let item = newArray[i];
+			if (!item)
+			{
+				continue;
+			}
+
 			// @ts-ignore
 			const id = item[key] ?? null;
 			if (!oldItems.has(id))
@@ -121,6 +131,19 @@ export class DataHelper
 			 */
 			const oldItem = oldItems.get(id).item;
 			item = { ...oldItem, ...item };
+
+			/**
+			 * Reporting an untouched item as updated makes the caller
+			 * rebuild its row for nothing. This matters most on the
+			 * stale-while-revalidate resume path, which modifies the
+			 * whole loaded window on every mount.
+			 */
+			// @ts-ignore
+			if (DataHelper.deepEqual(oldItem, item))
+			{
+				changes.push(Item(i, item, 'unchanged'));
+				continue;
+			}
 
 			changes.push(Item(i, item, 'updated'));
 		}
@@ -143,6 +166,16 @@ export class DataHelper
 		for (let i = 0; i < length; i++)
 		{
 			const item = array[i];
+
+			/**
+			 * A null entry or an array hole would throw here and take the
+			 * whole list update with it.
+			 */
+			if (!item)
+			{
+				continue;
+			}
+
 			map.set(item[key], { item, index: i });
 		}
 		return map;

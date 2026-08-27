@@ -101,13 +101,14 @@ export class ChildHelper
 	 * @param {object} layout
 	 * @param {object} oldChild
 	 * @param {object} parent
-	 * @returns {void}
+	 * @returns {object|null} The first element that was built, so callers
+	 *   holding an index of nodes can point it at the replacement.
 	 */
 	static replace(layout, oldChild, parent)
 	{
 		if (!oldChild)
 		{
-			return;
+			return null;
 		}
 
 		/**
@@ -118,7 +119,37 @@ export class ChildHelper
 
 		// @ts-ignore
 		const frag = Builder.build(layout, null, parent);
+
+		/**
+		 * The fragment is emptied by replaceWith, so the node has to be
+		 * read first.
+		 */
+		const element = frag.firstElementChild;
 		oldChild.replaceWith(frag);
+		return element;
+	}
+
+	/**
+	 * This will insert a child layout before a node.
+	 *
+	 * @param {object} layout
+	 * @param {object} container
+	 * @param {object|null} before - Insert at the end when null.
+	 * @param {object} parent
+	 * @returns {object|null} The first element that was built.
+	 */
+	static insertBefore(layout, container, before, parent)
+	{
+		if (!layout || !container)
+		{
+			return null;
+		}
+
+		// @ts-ignore
+		const frag = Builder.build(layout, null, parent);
+		const element = frag.firstElementChild;
+		container.insertBefore(frag, before ?? null);
+		return element;
 	}
 
 	/**

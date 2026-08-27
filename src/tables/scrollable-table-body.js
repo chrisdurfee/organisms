@@ -1,7 +1,7 @@
 import { Tbody } from '@base-framework/atoms';
 import { Events } from '@base-framework/base';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { createTableScrollHandler, fetchAndRefresh, setupFetchCallback } from '../lists/scroll-utils.js';
+import { createTableScrollHandler, fetchAndRefresh, rafThrottle, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -137,6 +137,14 @@ export class ScrollableTableBody extends TableBody
 		 */
 		const handleScroll = this.setupScrollHandler(container);
 
+		/**
+		 * The scroll listener is coalesced to one call per frame so a
+		 * fling cannot read the scroll metrics several times per painted
+		 * frame. The initial load below calls handleScroll directly
+		 * because it must run synchronously.
+		 */
+		const throttledScroll = rafThrottle(handleScroll);
+
 		return Tbody({
 			// @ts-ignore
 			class: `tbody ${this.class || ''}`,
@@ -172,15 +180,22 @@ export class ScrollableTableBody extends TableBody
 				 * This will remove the scroll event when the atom is destroyed.
 				 */
 				// @ts-ignore
-				Events.off('scroll', container, handleScroll);
+				throttledScroll.cancel();
+				// @ts-ignore
+				Events.off('scroll', container, throttledScroll);
 			},
 
 			/**
 			 * This will add the scroll event to the container.
 			 */
-			addEvent: ['scroll', container, handleScroll, { passive: true }],
+			addEvent: ['scroll', container, throttledScroll, { passive: true }],
 
-			for: ['items', rowCallBack]
+			/**
+			 * The explicit-data form with scope=false skips the per-row
+			 * scoped Data allocation that row() never uses. See TableBody.
+			 */
+			// @ts-ignore
+			for: [this.data, 'items', rowCallBack, false]
 		});
 	}
 };

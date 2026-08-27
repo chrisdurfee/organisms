@@ -1,7 +1,7 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, createScrollHandler, getListFromParent, setupFetchCallback } from "./scroll-utils.js";
+import { addRefreshMethod, createScrollHandler, getListFromParent, rafThrottle, setupFetchCallback } from "./scroll-utils.js";
 
 /**
  * A ScrollableList component that updates when its container is scrolled.
@@ -66,9 +66,11 @@ export const ScrollableContainer = Atom((props, children) =>
 			{
 				/**
 				 * Attach the scroll listener with a stable reference so
-				 * onDestroyed can remove this exact function.
+				 * onDestroyed can remove this exact function. It is
+				 * coalesced to one call per frame so a fling cannot read
+				 * the scroll metrics several times per painted frame.
 				 */
-				activeScrollListener = (e) => handleScroll(e, parent);
+				activeScrollListener = rafThrottle((e) => handleScroll(e, parent));
 				Events.on('scroll', container, activeScrollListener, { passive: true });
 
 				// @ts-ignore
@@ -112,6 +114,8 @@ export const ScrollableContainer = Atom((props, children) =>
 				 */
 				if (activeScrollListener)
 				{
+					// @ts-ignore
+					activeScrollListener.cancel();
 					Events.off('scroll', container, activeScrollListener);
 					activeScrollListener = null;
 				}
