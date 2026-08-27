@@ -273,6 +273,10 @@ export const List = Jot(
 	/**
 	 * This will link the parent data to the list.
 	 *
+	 * The link is released by the framework: prepareDestroy() calls
+	 * data.unlink() whenever the unit is not persisting, which tears
+	 * down both directions of the pair.
+	 *
 	 * @returns {*}
 	 */
 	linkParentData()
@@ -285,19 +289,7 @@ export const List = Jot(
 		{
 			parentValue = parentData.get('hasItems');
 			// @ts-ignore
-			const token = this.data.link(parentData, 'hasItems');
-
-			/**
-			 * Keep the handles needed to release this link. Data.unlink()
-			 * cannot do it: its emptiness check reports every link map as
-			 * empty and returns before removing anything, so without an
-			 * explicit release the parent keeps publishing hasItems into
-			 * a destroyed list on every change.
-			 */
-			// @ts-ignore
-			this.parentLinkData = parentData;
-			// @ts-ignore
-			this.parentLinkToken = token;
+			this.data.link(parentData, 'hasItems');
 		}
 		// @ts-ignore
 		else if (this.isDynamic === true)
@@ -305,50 +297,6 @@ export const List = Jot(
 			return undefined;
 		}
 		return parentValue;
-	},
-
-	/**
-	 * This will release the hasItems link created in linkParentData().
-	 *
-	 * @returns {void}
-	 */
-	unlinkParentData()
-	{
-		// @ts-ignore
-		const parentData = this.parentLinkData;
-		if (!parentData)
-		{
-			return;
-		}
-
-		// @ts-ignore
-		parentData.off('hasItems', this.parentLinkToken);
-
-		/**
-		 * The reverse subscription lives on this list's own data, which
-		 * is discarded with the list, but the parent's link map holds
-		 * both its token and a strong reference to that data. Drop the
-		 * entry by data id so the whole item graph can be collected.
-		 */
-		const links = parentData.links;
-		// @ts-ignore
-		if (links && typeof links.forEach === 'function')
-		{
-			// @ts-ignore
-			const dataId = this.data.getDataId();
-			links.forEach((linked, linkToken) =>
-			{
-				if (linked && typeof linked.getDataId === 'function' && linked.getDataId() === dataId)
-				{
-					links.delete(linkToken);
-				}
-			});
-		}
-
-		// @ts-ignore
-		this.parentLinkData = null;
-		// @ts-ignore
-		this.parentLinkToken = null;
 	},
 
 	/**
@@ -407,18 +355,6 @@ export const List = Jot(
 		{
 			// @ts-ignore
 			this.resetPagination();
-		}
-
-		/**
-		 * Persisting lists keep their data alive for the next mount, so
-		 * the link is released on the same condition the framework uses
-		 * for its own unlink.
-		 */
-		// @ts-ignore
-		if (this.persist !== true)
-		{
-			// @ts-ignore
-			this.unlinkParentData();
 		}
 
 		/**
