@@ -1,6 +1,6 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.1.62",
+	"version": "1.1.63",
 
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
@@ -35,7 +35,7 @@
 		"@base-framework/base": "^3.9.8"
 	},
 	"dependencies": {
-		"@base-framework/atoms": "^1.0.38"
+		"@base-framework/atoms": "^1.2.2"
 	},
 	"types": "dist/types/organisms.d.ts",
 	"files": [
