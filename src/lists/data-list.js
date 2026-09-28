@@ -3,7 +3,8 @@ import DataContainer from "./data-container.js";
 import { List } from "./list.js";
 
 /**
- * A ScrollableList component that updates when its container is scrolled.
+ * A DataList component that fetches its rows once on create and reloads
+ * them through `list.refresh()`.
  *
  * @param {object} props
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
@@ -20,6 +21,17 @@ import { List } from "./list.js";
  * @property {string} [props.cache] - The cache name to use.
  * @property {object|null} [props.emptyState] - The empty state to show when there are no items.
  * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
+ * @property {string} [props.minHeight] - A CSS min-height reserved while the first page loads
+ *   (no skeleton) so content does not pop in. Off by default.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted list resumes. Defaults to max(limit, 50).
+ * @property {boolean} [props.clone=true] - Deep-copies every batch of items (the default). Pass
+ *   `false` to use the item objects as given and keep one copy of the data in memory; the
+ *   caller must not mutate them afterwards.
+ * @property {boolean} [props.contentVisibility=false] - Applies `content-visibility:auto` to each
+ *   row so the browser skips rendering off-screen rows.
+ * @property {number} [props.rowHeight=64] - The estimated row height (px) reserved for an
+ *   unrendered row when `contentVisibility` is on.
  * @returns {object}
  */
 export const DataList = Atom((props) =>
@@ -48,6 +60,8 @@ export const DataList = Atom((props) =>
 			// @ts-ignore
 			limit: props.limit,
 			// @ts-ignore
+			revalidateLimit: props.revalidateLimit,
+			// @ts-ignore
 			containerClass: props.containerClass ?? '',
 			// @ts-ignore
 			data: props.data
@@ -68,6 +82,16 @@ export const DataList = Atom((props) =>
 				emptyState: props.emptyState || null,
 				// @ts-ignore
 				skeleton: props.skeleton || null,
+				// @ts-ignore
+				limit: props.limit,
+				// @ts-ignore
+				minHeight: props.minHeight,
+				// @ts-ignore
+				clone: props.clone,
+				// @ts-ignore
+				contentVisibility: props.contentVisibility,
+				// @ts-ignore
+				rowHeight: props.rowHeight,
 				// @ts-ignore
 				linkParent: props.linkParent || false,
 				persist,

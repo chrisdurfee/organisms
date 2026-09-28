@@ -15,9 +15,16 @@ export class PaginationTracker
 	 */
 	constructor(offset = 0, limit = 20)
 	{
+		/**
+		 * The offset the first page starts from. reset() returns to this
+		 * value so an `offset` prop is honoured after every reset, not
+		 * only until the first fetch.
+		 */
+		this.initialOffset = Number(offset) || 0;
+
 		// Backward pagination (older/historical data)
 		this.lastCursor = null;
-		this.currentOffset = offset;
+		this.currentOffset = this.initialOffset;
 		this.limit = limit;
 		this.hasMoreData = true;
 		this.loading = false;
@@ -26,6 +33,21 @@ export class PaginationTracker
 		this.newestId = null;
 		this.hasNewerData = false;
 		this.loadingNewer = false;
+
+		/**
+		 * The request generation. Every reset or cancel moves it forward,
+		 * so a response to a request issued before that point can tell it
+		 * was superseded and be dropped instead of landing on the reset
+		 * (or destroyed) list.
+		 */
+		this.generation = 0;
+
+		/**
+		 * How many times the tracker has been reset. Lets state that is
+		 * derived from the pagination position (the row window's page
+		 * ledger) notice a reset without being told.
+		 */
+		this.resets = 0;
 	}
 
 	/**
@@ -46,6 +68,31 @@ export class PaginationTracker
 	canLoadNewer()
 	{
 		return this.hasNewerData && this.newestId !== null;
+	}
+
+	/**
+	 * Returns whether a request token read from `generation` is still
+	 * current, i.e. no reset or cancel has happened since it was issued.
+	 *
+	 * @param {number} generation
+	 * @returns {boolean}
+	 */
+	isCurrent(generation)
+	{
+		return generation === this.generation;
+	}
+
+	/**
+	 * Supersedes every in-flight request without moving the pagination
+	 * position. Used when the owner is destroyed or a refresh starts.
+	 *
+	 * @returns {void}
+	 */
+	cancel()
+	{
+		this.generation++;
+		this.loading = false;
+		this.loadingNewer = false;
 	}
 
 	/**
@@ -79,19 +126,20 @@ export class PaginationTracker
 	}
 
 	/**
-	 * Resets the tracker state.
+	 * Resets the tracker state. Any request still in flight is superseded
+	 * so its response cannot land on top of the reset state.
 	 *
 	 * @returns {void}
 	 */
 	reset()
 	{
 		this.lastCursor = null;
-		this.currentOffset = 0;
+		this.currentOffset = this.initialOffset;
 		this.hasMoreData = true;
-		this.loading = false;
 		this.newestId = null;
 		this.hasNewerData = false;
-		this.loadingNewer = false;
+		this.resets++;
+		this.cancel();
 	}
 }
 

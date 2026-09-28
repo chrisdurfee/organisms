@@ -1,6 +1,6 @@
 import { Tbody } from '@base-framework/atoms';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { fetchAndRefresh, setupFetchCallback } from '../lists/scroll-utils.js';
+import { fetchAndRefresh, hasResumedRows, revalidateResumedRows, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -17,6 +17,12 @@ import { TableBody } from './table-body.js';
  * @property {object} [props.tableData] - The data object containing the xhr method.
  * @property {string} [props.xhrMethod='all'] - The method name to call on tableData.xhr.
  * @property {string} [props.containerClass] - The class to add to the scroll container.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted body resumes. Defaults to max(limit, 50); rows beyond it stay as-is.
+ * @property {function} [props.emptyState] - Returns the layout shown in a full-width row when
+ *   the loaded body has no rows.
+ * @property {boolean} [props.clone=true] - Deep-copies every batch of rows (the default). Pass
+ *   `false` to use the row objects as given; the caller must not mutate them afterwards.
  *
  * @class DataTableBody
  * @extends TableBody
@@ -105,6 +111,13 @@ export class DataTableBody extends TableBody
 		// @ts-ignore
 		this.setupFetchCallback();
 
+		/**
+		 * The empty state waits for the first response so a body that is
+		 * still loading never shows it.
+		 */
+		// @ts-ignore
+		this.awaitingData = true;
+
 		return Tbody({
 			// @ts-ignore
 			class: `tbody ${this.class || ''}`,
@@ -120,7 +133,36 @@ export class DataTableBody extends TableBody
 			{
 				// @ts-ignore
 				this.cacheEle(ele, 'listContainer');
+
+				/**
+				 * A persisted body that resumed its rows revalidates them
+				 * in place instead of resetting to page one, so the rows
+				 * never flash and the table keeps its height.
+				 */
+				if (hasResumedRows(this))
+				{
+					// @ts-ignore
+					revalidateResumedRows(this.fetchCallback, this.tracker, this, { revalidateLimit: this.revalidateLimit });
+					return;
+				}
+
 				this.refresh();
+			},
+
+			/**
+			 * Drops any request still in flight so a late response is never
+			 * applied to the destroyed table body.
+			 *
+			 * @returns {void}
+			 */
+			onDestroyed: () =>
+			{
+				// @ts-ignore
+				if (this.tracker)
+				{
+					// @ts-ignore
+					this.tracker.cancel();
+				}
 			},
 
 			/**
@@ -128,7 +170,13 @@ export class DataTableBody extends TableBody
 			 * scoped Data allocation that row() never uses. See TableBody.
 			 */
 			// @ts-ignore
-			for: [this.data, 'items', rowCallBack, false]
+			for: [this.data, 'items', rowCallBack, false],
+
+			/**
+			 * Declared after for: so the rows are built before the empty
+			 * state row is placed.
+			 */
+			onSet: this.getEmptyStateWatcher()
 		});
 	}
 };

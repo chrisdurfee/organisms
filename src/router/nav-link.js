@@ -25,13 +25,12 @@ const Watcher = (attr, value) => ({
 const escapeRegExp = (path) => String(path).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * This will check if the path is active.
+ * This will compile the active-route pattern for a link path.
  *
  * @param {string} path
- * @param {string} url
- * @returns {boolean}
+ * @returns {RegExp}
  */
-const isActive = (path, url) => new RegExp('^' + escapeRegExp(path) + '($|#|/|\\.).*').test(url);
+const compileActivePattern = (path) => new RegExp('^' + escapeRegExp(path) + '($|#|/|\\.).*');
 
 /**
  * NavLink
@@ -95,17 +94,6 @@ export class NavLink extends Component
     }
 
     /**
-     * This will get the link path.
-     *
-     * @returns {string|null}
-     */
-    getLinkPath()
-    {
-        // @ts-ignore
-        return this?.panel?.pathname || null;
-    }
-
-    /**
      * This will get string.
      *
      * @param {string} string
@@ -148,12 +136,37 @@ export class NavLink extends Component
             callBack: (value, ele) =>
             {
                 const path = ele.pathname + ele.hash;
-				const selected = exact? (value === path) : (isActive(ele.pathname, value));
+				const selected = exact? (value === path) : this.getActivePattern(ele.pathname).test(value);
                 this.update(selected);
             }
         });
 
         return watchers;
+    }
+
+    /**
+     * This will return the active-route pattern for the link path.
+     *
+     * The pattern is compiled once per path and reused on every route
+     * change; it is only rebuilt when the link href (and so its
+     * pathname) changes.
+     *
+     * @param {string} pathname
+     * @returns {RegExp}
+     */
+    getActivePattern(pathname)
+    {
+        // @ts-ignore
+        if (!this.activePattern || this.activePatternPath !== pathname)
+        {
+            // @ts-ignore
+            this.activePatternPath = pathname;
+            // @ts-ignore
+            this.activePattern = compileActivePattern(pathname);
+        }
+
+        // @ts-ignore
+        return this.activePattern;
     }
 
     /**

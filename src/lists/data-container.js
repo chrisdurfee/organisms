@@ -14,6 +14,8 @@ import { addRefreshMethod, getListFromParent, hasResumedRows, revalidateResumedR
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {string} [props.containerClass] - The class to add to the list container.
  * @property {string} [props.listCache] - The list cache name to use.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted list resumes. Defaults to max(limit, 50); rows beyond it stay as-is.
  * @param {Array<any>} children - The child elements to render.
  * @returns {object}
  */
@@ -65,11 +67,23 @@ export const DataContainer = Atom((props, children) =>
 				 */
 				if (hasResumedRows(list))
 				{
-					revalidateResumedRows(fetchCallback, tracker, list);
+					// @ts-ignore
+					revalidateResumedRows(fetchCallback, tracker, list, { revalidateLimit: props.revalidateLimit });
 					return;
 				}
 
 				list.refresh();
+			},
+
+			/**
+			 * Drops any request still in flight so a late response is never
+			 * applied once the container is gone.
+			 *
+			 * @returns {void}
+			 */
+			onDestroyed()
+			{
+				tracker.cancel();
 			}
 		},
 		children

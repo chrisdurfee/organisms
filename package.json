@@ -1,12 +1,13 @@
 {
 	"name": "@base-framework/organisms",
-	"version": "1.1.63",
-
+	"version": "1.1.65",
 	"description": "This will add default organisms to the base framework.",
 	"main": "./dist/organisms.js",
 	"scripts": {
 		"build": "node ./esbuild.js && tsc",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "npm run build",
+		"test": "vitest",
+		"test:run": "vitest run"
 	},
 	"type": "module",
 	"sideEffects": false,
@@ -29,7 +30,9 @@
 	"devDependencies": {
 		"@base-framework/base": "^3.9.8",
 		"esbuild": "^0.25.0",
-		"typescript": "^5.4.2"
+		"jsdom": "^29.1.1",
+		"typescript": "^5.4.2",
+		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {
 		"@base-framework/base": "^3.9.8"

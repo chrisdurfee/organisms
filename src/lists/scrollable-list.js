@@ -26,6 +26,19 @@ import { List } from "./list.js";
  * @property {object} [props.skeleton] - Skeleton loader config `{ number, row }` shown before data loads.
  * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the trigger edge
  *   at which to prefetch the next page. Defaults to one viewport height.
+ * @property {string} [props.minHeight] - A CSS min-height reserved while the first page loads
+ *   (no skeleton) so content does not pop in. Off by default.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted list resumes. Defaults to max(limit, 50).
+ * @property {boolean} [props.clone=true] - Deep-copies every batch of items (the default). Pass
+ *   `false` to use the item objects as given and keep one copy of the data in memory; the
+ *   caller must not mutate them afterwards.
+ * @property {boolean} [props.contentVisibility=false] - Applies `content-visibility:auto` to each
+ *   row so the browser skips rendering off-screen rows.
+ * @property {number} [props.rowHeight=64] - The estimated row height (px) reserved for an
+ *   unrendered row when `contentVisibility` is on.
+ * @property {number} [props.maxRows] - Caps the rows kept in the list and re-fetches dropped
+ *   rows when the user scrolls back to them (see BiDirectionalContainer). Unlimited by default.
  * @returns {object}
  */
 export const ScrollableList = Atom((props) =>
@@ -64,6 +77,10 @@ export const ScrollableList = Atom((props) =>
 			// @ts-ignore
 			limit: props.limit,
 			// @ts-ignore
+			revalidateLimit: props.revalidateLimit,
+			// @ts-ignore
+			maxRows: props.maxRows,
+			// @ts-ignore
 			loadMoreThreshold: props.loadMoreThreshold,
 			// @ts-ignore
 			containerClass: props.containerClass ?? 'flex flex-auto flex-col',
@@ -86,6 +103,16 @@ export const ScrollableList = Atom((props) =>
 				emptyState: props.emptyState || null,
 				// @ts-ignore
 				skeleton: props.skeleton || null,
+				// @ts-ignore
+				limit: props.limit,
+				// @ts-ignore
+				minHeight: props.minHeight,
+				// @ts-ignore
+				clone: props.clone,
+				// @ts-ignore
+				contentVisibility: props.contentVisibility,
+				// @ts-ignore
+				rowHeight: props.rowHeight,
 				// @ts-ignore
 				rowItem: props.rowItem,
 				// @ts-ignore

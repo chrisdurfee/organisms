@@ -1,15 +1,17 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, createScrollHandler, getListFromParent, rafThrottle, setupFetchCallback } from "./scroll-utils.js";
+import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRows, rafThrottle, revalidateResumedRows, setupFetchCallback } from "./scroll-utils.js";
 
 /**
- * A ScrollableList component that updates when its container is scrolled.
+ * A ScrollableContainer component that loads more items into its list when
+ * the scroll container is scrolled.
  *
  * @param {object} props
  * @property {HTMLElement} [props.scrollContainer] - The container element for scroll events. Defaults to globalThis.
  * @property {function} [props.loadMoreItems] - A function to fetch/generate additional items.
  * @property {object} [props.data] - The data object containing the xhr method.
+ * @property {string} [props.xhrMethod='all'] - The method name to call on data.xhr.
  * @property {number} [props.offset] - The initial offset. Defaults to 0.
  * @property {number} [props.limit] - Number of items to load per batch. Defaults to 20.
  * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the bottom
@@ -18,6 +20,8 @@ import { addRefreshMethod, createScrollHandler, getListFromParent, rafThrottle, 
  *   items typically render before the user reaches the bottom (standard prefetch UX).
  * @property {string} [props.containerClass] - The class to add to the scroll container.
  * @property {string} [props.listCache] - The list cache name to use.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted list resumes. Defaults to max(limit, 50); rows beyond it stay as-is.
  * @param {array} children - The child elements to render.
  * @returns {object}
  */
@@ -28,7 +32,7 @@ export const ScrollableContainer = Atom((props, children) =>
 	// @ts-ignore
 	const container = props.scrollContainer || globalThis;
 	// @ts-ignore
-	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data);
+	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data, props.xhrMethod);
 
 	/**
 	 * This will handle the scroll event.
@@ -69,8 +73,19 @@ export const ScrollableContainer = Atom((props, children) =>
 				 * onDestroyed can remove this exact function. It is
 				 * coalesced to one call per frame so a fling cannot read
 				 * the scroll metrics several times per painted frame.
+				 *
+				 * A list on a detached keep-alive page ignores scroll
+				 * events from the page that is showing, so it never
+				 * loads pages while it is out of the document.
 				 */
-				activeScrollListener = rafThrottle((e) => handleScroll(e, parent));
+				activeScrollListener = rafThrottle((e) =>
+				{
+					if (ele.isConnected === false)
+					{
+						return;
+					}
+					handleScroll(e, parent);
+				});
 				Events.on('scroll', container, activeScrollListener, { passive: true });
 
 				// @ts-ignore
@@ -93,6 +108,18 @@ export const ScrollableContainer = Atom((props, children) =>
 				list.resetPagination = () => tracker.reset();
 
 				/**
+				 * A persisted list that resumed its rows revalidates them in
+				 * place instead of resetting to page one, so the resumed rows
+				 * and the scroll position stay put.
+				 */
+				if (hasResumedRows(list))
+				{
+					// @ts-ignore
+					revalidateResumedRows(fetchCallback, tracker, list, { revalidateLimit: props.revalidateLimit });
+					return;
+				}
+
+				/**
 				 * This will request the first fetch.
 				 */
 				handleScroll(null, parent, () =>
@@ -109,6 +136,12 @@ export const ScrollableContainer = Atom((props, children) =>
 			 */
 			onDestroyed(ele, parent)
 			{
+				/**
+				 * Drop any request still in flight so a late response cannot
+				 * land in a list registered later under the same cache name.
+				 */
+				tracker.cancel();
+
 				/**
 				 * This will remove the scroll event when the atom is destroyed.
 				 */

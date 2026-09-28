@@ -1,7 +1,6 @@
 import { Tbody } from '@base-framework/atoms';
-import { Events } from '@base-framework/base';
 import { PaginationTracker } from '../lists/pagination-tracker.js';
-import { createTableScrollHandler, fetchAndRefresh, rafThrottle, setupFetchCallback } from '../lists/scroll-utils.js';
+import { createTableScrollHandler, fetchAndRefresh, hasResumedRows, rafThrottle, revalidateResumedRows, setupFetchCallback } from '../lists/scroll-utils.js';
 import { TableBody } from './table-body.js';
 
 /**
@@ -23,6 +22,12 @@ import { TableBody } from './table-body.js';
  * @property {number} [props.columnCount] - Number of columns for skeleton rows
  * @property {number|function} [props.loadMoreThreshold] - Distance (px) from the bottom
  *   at which to prefetch the next page. Defaults to one viewport height.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted body resumes. Defaults to max(limit, 50); rows beyond it stay as-is.
+ * @property {function} [props.emptyState] - Returns the layout shown in a full-width row when
+ *   the loaded body has no rows.
+ * @property {boolean} [props.clone=true] - Deep-copies every batch of rows (the default). Pass
+ *   `false` to use the row objects as given; the caller must not mutate them afterwards.
  *
  * @class ScrollableTableBody
  * @extends TableBody
@@ -142,8 +147,26 @@ export class ScrollableTableBody extends TableBody
 		 * fling cannot read the scroll metrics several times per painted
 		 * frame. The initial load below calls handleScroll directly
 		 * because it must run synchronously.
+		 *
+		 * A table body on a detached keep-alive page ignores scroll
+		 * events from the page that is showing.
 		 */
-		const throttledScroll = rafThrottle(handleScroll);
+		const throttledScroll = rafThrottle((e, parent) =>
+		{
+			// @ts-ignore
+			if (this.panel && this.panel.isConnected === false)
+			{
+				return;
+			}
+			handleScroll(e, parent);
+		});
+
+		/**
+		 * The empty state waits for the first response so a body that is
+		 * still loading never shows it.
+		 */
+		// @ts-ignore
+		this.awaitingData = true;
 
 		return Tbody({
 			// @ts-ignore
@@ -161,6 +184,18 @@ export class ScrollableTableBody extends TableBody
 				// @ts-ignore
 				this.cacheEle(ele, 'listContainer');
 
+				/**
+				 * A persisted body that resumed its rows revalidates them
+				 * in place instead of resetting to page one, so the rows
+				 * and the scroll position stay put.
+				 */
+				if (hasResumedRows(this))
+				{
+					// @ts-ignore
+					revalidateResumedRows(this.fetchCallback, this.tracker, this, { revalidateLimit: this.revalidateLimit });
+					return;
+				}
+
 				handleScroll(null, parent, () =>
 				{
 					// @ts-ignore
@@ -169,20 +204,32 @@ export class ScrollableTableBody extends TableBody
 			},
 
 			/**
-			 * This will remove the scroll event when the atom is destroyed.
+			 * This will drop pending work when the atom is destroyed.
+			 *
+			 * The scroll listener itself is registered through the
+			 * `addEvent` directive below, which wraps the callback and
+			 * hands it to the component's EventHelper; that helper removes
+			 * it when the component is destroyed, so no Events.off call is
+			 * needed (one with `throttledScroll` would never match).
 			 *
 			 * @param {object} ele
 			 * @param {object} parent
 			 */
 			onDestroyed: (ele, parent) =>
 			{
-				/**
-				 * This will remove the scroll event when the atom is destroyed.
-				 */
 				// @ts-ignore
 				throttledScroll.cancel();
+
+				/**
+				 * Drop any request still in flight so a late response is
+				 * never applied to the destroyed table body.
+				 */
 				// @ts-ignore
-				Events.off('scroll', container, throttledScroll);
+				if (this.tracker)
+				{
+					// @ts-ignore
+					this.tracker.cancel();
+				}
 			},
 
 			/**
@@ -195,7 +242,13 @@ export class ScrollableTableBody extends TableBody
 			 * scoped Data allocation that row() never uses. See TableBody.
 			 */
 			// @ts-ignore
-			for: [this.data, 'items', rowCallBack, false]
+			for: [this.data, 'items', rowCallBack, false],
+
+			/**
+			 * Declared after for: so the rows are built before the empty
+			 * state row is placed.
+			 */
+			onSet: this.getEmptyStateWatcher()
 		});
 	}
 };

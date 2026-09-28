@@ -211,6 +211,30 @@ export class DataHelper
 			return false;
 		}
 
+		/**
+		 * Built-ins keep their state in internal slots rather than own
+		 * keys, so a key walk would report any two of them as equal.
+		 */
+		if (obj1 instanceof Date || obj2 instanceof Date)
+		{
+			return (obj1 instanceof Date && obj2 instanceof Date && Object.is(obj1.getTime(), obj2.getTime()));
+		}
+
+		if (obj1 instanceof Map || obj2 instanceof Map)
+		{
+			return (obj1 instanceof Map && obj2 instanceof Map && this.mapsEqual(obj1, obj2, depth));
+		}
+
+		if (obj1 instanceof Set || obj2 instanceof Set)
+		{
+			return (obj1 instanceof Set && obj2 instanceof Set && this.setsEqual(obj1, obj2, depth));
+		}
+
+		if (Array.isArray(obj1) !== Array.isArray(obj2))
+		{
+			return false;
+		}
+
 		const keys1 = Object.keys(obj1);
 		const keys2 = Object.keys(obj2);
 
@@ -226,14 +250,90 @@ export class DataHelper
 		{
 			const key = keys1[i];
 
-			// Fast path: check if key exists in obj2
-			if (!obj2.hasOwnProperty(key))
+			// Fast path: check if key exists in obj2. Called through the
+			// prototype so null-prototype objects do not throw.
+			if (!Object.prototype.hasOwnProperty.call(obj2, key))
 			{
 				return false;
 			}
 
 			// Recursive comparison
 			if (!this.deepEqual(obj1[key], obj2[key], depth + 1))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Compares two Maps: same size, same keys and deeply equal values.
+	 *
+	 * @param {Map} map1
+	 * @param {Map} map2
+	 * @param {number} depth - The current recursion depth.
+	 * @returns {boolean}
+	 * @private
+	 */
+	static mapsEqual(map1, map2, depth)
+	{
+		if (map1.size !== map2.size)
+		{
+			return false;
+		}
+
+		for (const [key, value] of map1)
+		{
+			if (!map2.has(key) || !this.deepEqual(value, map2.get(key), depth + 1))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Compares two Sets. Primitive members are matched by value; object
+	 * members are matched against a deeply equal member of the other set.
+	 *
+	 * @param {Set} set1
+	 * @param {Set} set2
+	 * @param {number} depth - The current recursion depth.
+	 * @returns {boolean}
+	 * @private
+	 */
+	static setsEqual(set1, set2, depth)
+	{
+		if (set1.size !== set2.size)
+		{
+			return false;
+		}
+
+		for (const value of set1)
+		{
+			if (set2.has(value))
+			{
+				continue;
+			}
+
+			if (typeof value !== 'object' || value === null)
+			{
+				return false;
+			}
+
+			let found = false;
+			for (const other of set2)
+			{
+				if (this.deepEqual(value, other, depth + 1))
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
 			{
 				return false;
 			}

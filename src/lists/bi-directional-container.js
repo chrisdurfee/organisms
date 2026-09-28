@@ -1,7 +1,16 @@
 import { Div } from "@base-framework/atoms";
 import { Atom, Events } from "@base-framework/base";
 import { PaginationTracker } from "./pagination-tracker.js";
-import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRows, invokeFetch, rafThrottle, revalidateResumedRows, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
+import { RowWindow } from "./row-window.js";
+import { addRefreshMethod, createScrollHandler, getListFromParent, getScrollMetrics, hasResumedRows, invokeFetch, rafThrottle, revalidateResumedRows, setupFetchCallback, setupFetchNewerCallback } from "./scroll-utils.js";
+
+/**
+ * How close (px) to the bottom an 'up' list counts as pinned to the
+ * newest rows.
+ *
+ * @type {number}
+ */
+const PINNED_THRESHOLD = 50;
 
 /**
  * A BiDirectionalContainer component that supports both backward (older) and forward (newer)
@@ -33,6 +42,17 @@ import { addRefreshMethod, createScrollHandler, getListFromParent, hasResumedRow
  *   `(metrics) => pixels` for dynamic sizing. Defaults to one viewport height so new
  *   items typically render before the user reaches the edge (standard prefetch UX).
  * @property {string} [props.listCache] - The list cache name to use.
+ * @property {number} [props.revalidateLimit] - The most resumed rows one revalidation request
+ *   covers when a persisted list resumes. Defaults to max(limit, 50); rows beyond it stay as-is.
+ * @property {number} [props.maxRows] - Caps the rows kept in the list (unlimited by default).
+ *   When a page loaded by scrolling pushes the list past the cap, whole pages are dropped
+ *   from the opposite end (the top for 'down', the bottom for 'up'); scrolling back to
+ *   that end re-fetches them with the request that first loaded them, and the loading end
+ *   is trimmed and rewound in turn. Dropping rows above the viewport moves the scroll
+ *   offset by the removed height so the content does not jump. At least one page is kept,
+ *   so the list can briefly hold up to a page more than the cap; use a cap worth several
+ *   viewports of rows. While the newest rows are dropped, fetchNew() is skipped. Lists with
+ *   a divider are not trimmed. See RowWindow for the details.
  * @param {Array<any>} children - The child elements to render.
  * @returns {object}
  *
@@ -110,8 +130,17 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	const scrollDirection = props.scrollDirection || 'down';
 	// @ts-ignore
 	const fetchCallback = props.loadMoreItems || setupFetchCallback(props.data, props.xhrMethod);
+
+	/**
+	 * The key of the registered list, read by the default newer-items
+	 * callback so the newest ID is taken from the list's own key.
+	 *
+	 * @type {string|null}
+	 */
+	let listKey = null;
+
 	// @ts-ignore
-	const fetchNewerCallback = props.loadNewerItems || setupFetchNewerCallback(props.data, props.xhrMethod);
+	const fetchNewerCallback = props.loadNewerItems || setupFetchNewerCallback(props.data, props.xhrMethod, () => listKey);
 
 	/**
 	 * This will handle the scroll event for loading older items.
@@ -122,7 +151,10 @@ export const BiDirectionalContainer = Atom((props, children) =>
 	 * @returns {void}
 	 */
 	// @ts-ignore
-	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache, props.loadMoreThreshold);
+	const rowWindow = RowWindow.create(props.maxRows, scrollDirection, container, tracker, fetchCallback);
+
+	// @ts-ignore
+	const handleScroll = createScrollHandler(container, tracker, fetchCallback, scrollDirection, props.listCache, props.loadMoreThreshold, rowWindow);
 
 	/**
 	 * The bound listener attached to the scroll container. Attached in
@@ -157,8 +189,19 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * onDestroyed can remove this exact function. It is
 				 * coalesced to one call per frame so a fling cannot read
 				 * the scroll metrics several times per painted frame.
+				 *
+				 * A list on a detached keep-alive page ignores scroll
+				 * events from the page that is showing, so it never
+				 * loads pages while it is out of the document.
 				 */
-				activeScrollListener = rafThrottle((e) => handleScroll(e, parent));
+				activeScrollListener = rafThrottle((e) =>
+				{
+					if (ele.isConnected === false)
+					{
+						return;
+					}
+					handleScroll(e, parent);
+				});
 				Events.on('scroll', container, activeScrollListener, { passive: true });
 
 				// Always start from a clean pagination state on mount. If the
@@ -173,6 +216,8 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				{
 					return;
 				}
+
+				listKey = list.key || null;
 
 				/**
 				 * This will add the refresh method to the list.
@@ -205,6 +250,17 @@ export const BiDirectionalContainer = Atom((props, children) =>
 					}
 
 					/**
+					 * The row window dropped the newest rows; they come
+					 * back (with anything newer) when the user scrolls
+					 * back to them, and inserting newer rows now would
+					 * leave a gap.
+					 */
+					if (rowWindow && rowWindow.hasTrimmed())
+					{
+						return;
+					}
+
+					/**
 					 * When polling without a since-cursor the server may return
 					 * rows that are already in the list. Remember this so the
 					 * response can be merged (deduped by key) instead of
@@ -213,9 +269,17 @@ export const BiDirectionalContainer = Atom((props, children) =>
 					const hadNullCursor = (tracker.newestId === null);
 
 					tracker.loadingNewer = true;
-					invokeFetch(fetchNewerCallback, tracker, (rows, newestId) =>
+					const generation = tracker.generation;
+					invokeFetch(fetchNewerCallback, tracker, (rows, newestId, failed = false) =>
 					{
-						if (rows && rows.length > 0)
+						// A reset or destroy since the request was issued owns
+						// the list (and the loading flag) now.
+						if (!tracker.isCurrent(generation))
+						{
+							return;
+						}
+
+						if (failed !== true && rows && rows.length > 0)
 						{
 							const appendNew = (scrollDirection === 'up');
 							if (hadNullCursor && list.key)
@@ -249,7 +313,10 @@ export const BiDirectionalContainer = Atom((props, children) =>
 						}
 					}, () =>
 					{
-						tracker.loadingNewer = false;
+						if (tracker.isCurrent(generation))
+						{
+							tracker.loadingNewer = false;
+						}
 					});
 				};
 
@@ -297,11 +364,33 @@ export const BiDirectionalContainer = Atom((props, children) =>
 				 * in place (stale-while-revalidate) instead of resetting to
 				 * page one — the resumed rows and scroll position stay put
 				 * while one request refreshes the loaded window. Chat-style
-				 * 'up' lists keep the classic pinned-to-bottom init.
+				 * 'up' lists are pinned to the newest rows at the bottom,
+				 * and stay pinned after the refresh if the user has not
+				 * scrolled away in the meantime.
 				 */
-				if (scrollDirection === 'down' && hasResumedRows(list))
+				if (hasResumedRows(list))
 				{
-					revalidateResumedRows(fetchCallback, tracker, list);
+					const isUp = (scrollDirection === 'up');
+					if (isUp)
+					{
+						list.scrollToBottom();
+					}
+
+					revalidateResumedRows(fetchCallback, tracker, list, {
+						direction: scrollDirection,
+						// @ts-ignore
+						revalidateLimit: props.revalidateLimit,
+						onApply: (!isUp)? null : (apply) =>
+						{
+							const metrics = getScrollMetrics(container);
+							const pinned = (metrics.scrollTop + metrics.clientHeight >= metrics.scrollHeight - PINNED_THRESHOLD);
+							apply();
+							if (pinned)
+							{
+								list.scrollToBottom();
+							}
+						}
+					});
 					return;
 				}
 
@@ -332,6 +421,12 @@ export const BiDirectionalContainer = Atom((props, children) =>
 			 */
 			onDestroyed()
 			{
+				/**
+				 * Drop any request still in flight so a late response cannot
+				 * land in a list registered later under the same cache name.
+				 */
+				tracker.cancel();
+
 				/**
 				 * This will remove the scroll event when the atom is destroyed.
 				 */

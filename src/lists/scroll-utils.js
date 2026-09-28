@@ -97,8 +97,28 @@ export const rafThrottle = (callBack) =>
 };
 
 /**
+ * Check whether an ID can be compared as a number (a finite number or
+ * a numeric string such as "42").
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+const isNumericId = (value) =>
+{
+	if (typeof value === 'number')
+	{
+		return Number.isFinite(value);
+	}
+
+	return (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)));
+};
+
+/**
  * Extract the newest ID from an array of rows by detecting sort order.
  * Compares first and last item IDs to determine if data is in ASC or DESC order.
+ *
+ * Numeric IDs (including numeric strings) are compared as numbers so
+ * "10" ranks above "9"; any other IDs fall back to a plain comparison.
  *
  * @param {Array} rows - The array of row objects
  * @param {string} [key='id'] - The property holding the item ID.
@@ -111,6 +131,9 @@ export function getNewestId(rows, key = 'id')
 		return null;
 	}
 
+	// A list without a configured key still identifies rows by 'id'.
+	key = key || 'id';
+
 	// Use null-safe checks so falsy-but-valid IDs (e.g. 0) are not skipped.
 	const firstId = rows[0]?.[key] ?? null;
 	const lastId = rows[rows.length - 1]?.[key] ?? null;
@@ -120,7 +143,11 @@ export function getNewestId(rows, key = 'id')
 	{
 		// If first ID > last ID, it's DESC order (newest first)
 		// If first ID < last ID, it's ASC order (oldest first)
-		return firstId > lastId ? firstId : lastId;
+		const isFirstNewer = (isNumericId(firstId) && isNumericId(lastId))
+			? Number(firstId) > Number(lastId)
+			: firstId > lastId;
+
+		return isFirstNewer ? firstId : lastId;
 	}
 
 	// Only one item has an ID - return whichever exists
@@ -146,6 +173,19 @@ export const getListFromParent = (parent, listCache = 'list') =>
 		console.warn(`[organisms] No list found on parent under cache name "${cacheName}". Check that the List "cache" prop matches the container "listCache" prop.`);
 	}
 	return list;
+};
+
+/**
+ * Read the list registered on the parent under the cache name without
+ * warning. Used to remember which list a request was issued for.
+ *
+ * @param {object} parent
+ * @param {string} [listCache='list']
+ * @returns {object|null}
+ */
+const peekListFromParent = (parent, listCache = 'list') =>
+{
+	return parent?.[listCache ?? 'list'] ?? null;
 };
 
 /**
@@ -477,6 +517,13 @@ export const prependRows = (rows, tracker, list, newestId = null) =>
 /**
  * Set up a fetch callback for loading data.
  *
+ * The callback is invoked as `callback(rows, lastCursor, failed)`. The
+ * base XHR reports a network or HTTP error by passing `false` as the
+ * response, which is surfaced as `failed = true` so the handlers can
+ * keep the current rows instead of treating the failure as an empty
+ * page. Custom `loadMoreItems` functions may pass the same third
+ * argument to report their own failures.
+ *
  * @param {object} data
  * @param {string} [xhrMethod='all'] - The method name to call on data.xhr.
  * @returns {function}
@@ -488,53 +535,73 @@ export const setupFetchCallback = (data, xhrMethod = 'all') =>
 		/**
 		 * This will handle the result of the fetch.
 		 *
-		 * @param {object|null} response
+		 * @param {object|null|false} response
 		 * @returns {void}
 		 */
 		const resultCallback = (response) =>
 		{
-			let rows = [];
-			let lastCursor = null;
-			if (response)
+			if (!response)
 			{
-				rows = response.rows || response.items || [];
-				lastCursor = response.lastCursor || null;
+				callback([], null, true);
+				return;
 			}
-			callback(rows, lastCursor);
+
+			const rows = response.rows || response.items || [];
+			const lastCursor = response.lastCursor || null;
+			callback(rows, lastCursor, false);
 		};
 
-		data.xhr[xhrMethod]('', resultCallback, tracker.currentOffset, tracker.limit, tracker.lastCursor);
+		data.xhr[xhrMethod || 'all']('', resultCallback, tracker.currentOffset, tracker.limit, tracker.lastCursor);
 	};
+};
+
+/**
+ * Resolve the row key used to read item IDs. Accepts a key name or a
+ * function returning one, so a container can supply the key of a list
+ * that registers after the callback is created.
+ *
+ * @param {string|function|null|undefined} key
+ * @returns {string}
+ */
+const resolveKey = (key) =>
+{
+	const value = (typeof key === 'function') ? key() : key;
+	return value || 'id';
 };
 
 /**
  * Set up a fetch callback for loading newer data (forward pagination).
  * Uses the 'since' parameter to fetch items newer than the current newest ID.
  *
+ * The callback is invoked as `callback(rows, newestId, failed)`; see
+ * setupFetchCallback() for the failure flag.
+ *
  * @param {object} data
  * @param {string} [xhrMethod='all'] - The method name to call on data.xhr.
+ * @param {string|function} [key='id'] - The row key holding the item ID, or
+ *   a function returning it.
  * @returns {function}
  */
-export const setupFetchNewerCallback = (data, xhrMethod = 'all') =>
+export const setupFetchNewerCallback = (data, xhrMethod = 'all', key = 'id') =>
 {
 	return (tracker, callback) =>
 	{
 		/**
 		 * This will handle the result of the fetch.
 		 *
-		 * @param {object|null} response
+		 * @param {object|null|false} response
 		 * @returns {void}
 		 */
 		const resultCallback = (response) =>
 		{
-			let rows = [];
-			let newestId = null;
-			if (response)
+			if (!response)
 			{
-				rows = response.rows || response.items || [];
-				newestId = getNewestId(rows);
+				callback([], null, true);
+				return;
 			}
-			callback(rows, newestId);
+
+			const rows = response.rows || response.items || [];
+			callback(rows, getNewestId(rows, resolveKey(key)), false);
 		};
 
 		// Pass since as a parameter to the xhr method
@@ -552,14 +619,29 @@ export const setupFetchNewerCallback = (data, xhrMethod = 'all') =>
  */
 export const fetchAndUpdate = (fetchCallback, tracker, list) =>
 {
-	fetchCallback(tracker, (rows, lastCursor) =>
+	const generation = tracker.generation;
+	fetchCallback(tracker, (rows, lastCursor, failed = false) =>
 	{
+		// A failed request is not an empty page, and a superseded one
+		// belongs to a state that no longer exists.
+		if (failed === true || !tracker.isCurrent(generation))
+		{
+			return;
+		}
+
 		updateRows(rows, tracker, list, lastCursor);
 	});
 };
 
 /**
  * Fetch and refresh the list.
+ *
+ * The first page is requested with a fresh tracker so the live tracker
+ * keeps its position until the response arrives: a failed refresh then
+ * leaves both the rows and the pagination exactly as they were. The
+ * live tracker is marked as loading for the duration so a scroll load
+ * cannot run alongside the refresh and append page one twice, and any
+ * request still in flight (including an earlier refresh) is superseded.
  *
  * @param {function} fetchCallback
  * @param {PaginationTracker} tracker
@@ -568,17 +650,43 @@ export const fetchAndUpdate = (fetchCallback, tracker, list) =>
  */
 export const fetchAndRefresh = (fetchCallback, tracker, list) =>
 {
-	tracker.reset();
-	fetchCallback(tracker, (rows, lastCursor) =>
+	tracker.cancel();
+	tracker.loading = true;
+	const generation = tracker.generation;
+
+	const requestTracker = new PaginationTracker(tracker.initialOffset, tracker.limit);
+	invokeFetch(fetchCallback, requestTracker, (rows, lastCursor, failed = false) =>
 	{
+		if (!tracker.isCurrent(generation))
+		{
+			return;
+		}
+
+		/**
+		 * Keep the current rows and pagination on failure; only the
+		 * loading flag is released so the refresh can be retried.
+		 */
+		if (failed === true)
+		{
+			tracker.loading = false;
+			return;
+		}
+
+		tracker.reset();
 		list.reset();
 		updateRows(rows, tracker, list, lastCursor);
 
 		// Set the newest ID by detecting sort order
-		const newestId = getNewestId(rows);
+		const newestId = getNewestId(rows, list.key);
 		if (newestId !== null)
 		{
 			tracker.updateNewest(newestId);
+		}
+	}, () =>
+	{
+		if (tracker.isCurrent(generation))
+		{
+			tracker.loading = false;
 		}
 	});
 };
@@ -608,111 +716,346 @@ export const hasResumedRows = (list) =>
 };
 
 /**
+ * The smallest number of rows a single revalidation request covers.
+ * The effective default cap is max(limit, MIN_REVALIDATE_LIMIT).
+ *
+ * @type {number}
+ */
+const MIN_REVALIDATE_LIMIT = 50;
+
+/**
+ * Resolve how many resumed rows one revalidation request may cover.
+ *
+ * @param {number|null|undefined} revalidateLimit - An explicit cap.
+ * @param {number} pageLimit - The container page size.
+ * @returns {number}
+ */
+export const getRevalidateLimit = (revalidateLimit, pageLimit) =>
+{
+	const explicit = Math.floor(Number(revalidateLimit));
+	if (Number.isFinite(explicit) && explicit > 0)
+	{
+		return explicit;
+	}
+
+	const limit = Math.floor(Number(pageLimit)) || 0;
+	return Math.max(limit, MIN_REVALIDATE_LIMIT);
+};
+
+/**
+ * Merge a fresh first page into the resumed rows, both in server order.
+ *
+ * The refreshed window runs from the first resumed row up to the last
+ * resumed row that the fresh page still contains (the anchor). Inside
+ * the window the fresh page is authoritative: changed rows update, new
+ * rows are added and resumed rows it no longer returns are removed.
+ * Rows after the anchor were not covered by the request (the server may
+ * also cap the limit) and stay as they are, minus any that moved into
+ * the window. When the response is known to reach the end of the data
+ * the whole resumed list is covered.
+ *
+ * @param {Array<object>} resumed - The resumed rows in server order.
+ * @param {Array<object>} fresh - The fresh rows in server order.
+ * @param {string} key
+ * @param {boolean} reachedEnd - The response covers every remaining row.
+ * @returns {Array<object>}
+ */
+export const mergeResumedWindow = (resumed, fresh, key, reachedEnd = false) =>
+{
+	const freshKeys = new Set();
+	for (let i = 0, length = fresh.length; i < length; i++)
+	{
+		const row = fresh[i];
+		if (row)
+		{
+			freshKeys.add(row[key]);
+		}
+	}
+
+	let anchor = -1;
+	if (reachedEnd)
+	{
+		anchor = resumed.length - 1;
+	}
+	else
+	{
+		for (let i = resumed.length - 1; i >= 0; i--)
+		{
+			const row = resumed[i];
+			if (row && freshKeys.has(row[key]))
+			{
+				anchor = i;
+				break;
+			}
+		}
+	}
+
+	const merged = fresh.slice();
+	for (let i = anchor + 1, length = resumed.length; i < length; i++)
+	{
+		const row = resumed[i];
+		if (!row || !freshKeys.has(row[key]))
+		{
+			merged.push(row);
+		}
+	}
+	return merged;
+};
+
+/**
+ * Check whether two row arrays hold the same keys in the same order.
+ *
+ * @param {Array<object>} a
+ * @param {Array<object>} b
+ * @param {string} key
+ * @returns {boolean}
+ */
+const sameKeyOrder = (a, b, key) =>
+{
+	if (a.length !== b.length)
+	{
+		return false;
+	}
+
+	for (let i = 0, length = a.length; i < length; i++)
+	{
+		if ((a[i] && a[i][key]) !== (b[i] && b[i][key]))
+		{
+			return false;
+		}
+	}
+	return true;
+};
+
+/**
+ * Apply a merged window to the list with the least DOM work.
+ *
+ * - Same rows in the same order: only the changed rows are replaced.
+ * - Keyed lists without dividers: a keyed reconcile reuses every
+ *   unchanged row node and only inserts, moves or removes what changed.
+ * - Divider lists cannot be reconciled (the seams are position
+ *   sensitive), so they are rebuilt in one synchronous pass; nothing is
+ *   painted in between, so the rows never flash.
+ *
+ * @param {object} list
+ * @param {Array<object>} resumed - The resumed rows in list order.
+ * @param {Array<object>} merged - The merged rows in server order.
+ * @param {Array<object>} fresh - The fresh rows in server order.
+ * @param {string} direction - 'down' or 'up'.
+ * @returns {void}
+ */
+const applyResumedWindow = (list, resumed, merged, fresh, direction) =>
+{
+	const key = list.key;
+
+	/**
+	 * 'up' lists prepend each page, which reverses it, so the list order
+	 * is the reverse of the server order.
+	 */
+	const items = (direction === 'up')? merged.slice().reverse() : merged;
+
+	if (sameKeyOrder(resumed, items, key))
+	{
+		list.modify(fresh);
+		return;
+	}
+
+	if (!list.rowDivider && typeof list.setRows === 'function')
+	{
+		list.setRows(items);
+		return;
+	}
+
+	list.reset();
+	if (direction === 'up')
+	{
+		list.prepend(merged);
+		return;
+	}
+
+	list.append(merged);
+};
+
+/**
  * Revalidate rows resumed from a persisted list without resetting the
- * list (stale-while-revalidate).
+ * list (stale-while-revalidate). Every container uses this on resume.
  *
  * The classic mount flow (reset + fetch page one) is jarring after a
  * resume: the restored rows paint, then get wiped down to the first
  * page, the scroll position collapses, and any scroll restorer has to
  * re-page all the way back down. Instead, this keeps every resumed row
- * on screen and issues ONE request covering the whole loaded window
- * (offset 0, limit = resumed row count). The response is merged in
- * place by key — rows the user edited elsewhere update, unchanged rows
- * are untouched — so there is no flash and the scroll position never
- * moves.
+ * on screen and issues ONE request for the start of the loaded window,
+ * capped at `revalidateLimit` rows (default max(limit, 50)). The
+ * response is merged in place by key (see mergeResumedWindow): changed
+ * rows update, new rows are added and rows missing from the refreshed
+ * window are removed; rows beyond the cap stay as they are.
  *
- * Rows added or deleted server-side while the user was away are NOT
- * inserted or removed during an in-place refresh: the server may cap
- * the requested limit below the resumed count, which would make
- * missing keys indistinguishable from truncation. Two exceptions swap
- * the window wholesale because the resumed rows are provably stale:
- * an EMPTY first page (query has no rows — clear to the empty state),
- * and a first page with NO key overlap against the resumed rows (the
- * resumed window belongs to a different result set, e.g. a persist
- * token shared across entities).
+ * Two cases swap the window wholesale because the resumed rows are
+ * provably stale: an EMPTY first page (query has no rows — clear to the
+ * empty state), and a first page with NO key overlap against the
+ * resumed rows (the resumed window belongs to a different result set,
+ * e.g. a persist token shared across entities).
  *
- * Pagination continues after the resumed window: the offset is set to
- * the resumed row count, and the response cursor is only adopted when
- * the response covered the full window (a truncated response's cursor
- * would rewind cursor-based feeds and duplicate rows).
+ * Pagination continues after the resumed rows: the offset is set to the
+ * merged row count, and the response cursor is only adopted when the
+ * response covered every resumed row (a truncated response's cursor
+ * would rewind cursor-based feeds and duplicate rows). A failed request
+ * keeps the resumed rows untouched.
  *
  * @param {Function} fetchCallback
  * @param {PaginationTracker} tracker
  * @param {object} list
+ * @param {object} [options]
+ * @param {string} [options.direction='down'] - 'up' for lists whose
+ *   pages are prepended (chat), where the list order is reversed.
+ * @param {number} [options.revalidateLimit] - Cap for the request size.
+ * @param {function} [options.onApply] - Wraps applying the response:
+ *   called as `onApply(apply)` and must call `apply()`. Lets a container
+ *   measure the scroll position before and restore it after.
  * @returns {void}
  */
-export const revalidateResumedRows = (fetchCallback, tracker, list) =>
+export const revalidateResumedRows = (fetchCallback, tracker, list, options = {}) =>
 {
-	const resumed = list.getRows();
+	const direction = options.direction || 'down';
+	const resumed = list.getRows().slice();
 	const count = resumed.length;
 
 	tracker.reset();
 	tracker.loading = true;
+	const generation = tracker.generation;
+	const startOffset = tracker.initialOffset;
+	const requested = Math.min(count, getRevalidateLimit(options.revalidateLimit, tracker.limit));
 
-	const windowTracker = new PaginationTracker(0, count);
-	invokeFetch(fetchCallback, windowTracker, (rows, lastCursor) =>
+	const windowTracker = new PaginationTracker(startOffset, requested);
+	invokeFetch(fetchCallback, windowTracker, (rows, lastCursor, failed = false) =>
 	{
+		// A reset, refresh or destroy since the request was issued owns
+		// the list now.
+		if (!tracker.isCurrent(generation))
+		{
+			return;
+		}
+
 		tracker.loading = false;
 
 		/**
-		 * The server says this query's first page is empty — the
-		 * resumed rows cannot belong to it (e.g. they were persisted
-		 * under a token another entity's list also resolves to). Clear
-		 * them so the empty state shows instead of another list's data.
+		 * A failed request says nothing about the resumed rows, so keep
+		 * them on screen and continue pagination after the window, the
+		 * same as a truncated response (no cursor is adopted).
 		 */
-		if (!rows || rows.length === 0)
+		if (failed === true)
 		{
-			list.reset();
-			tracker.hasMoreData = false;
-			list.updateHasItems();
+			tracker.currentOffset = startOffset + count;
 			return;
 		}
 
-		/**
-		 * No key overlap between the resumed window and the fresh first
-		 * page means the resumed rows belong to a DIFFERENT result set —
-		 * swap wholesale instead of merging, so stale rows never linger
-		 * under fresh ones.
-		 */
-		const key = list.key;
-		const resumedKeys = new Set(resumed.map((row) => row && row[key]));
-		const overlaps = rows.some((row) => row && resumedKeys.has(row[key]));
-		if (!overlaps)
+		const apply = () =>
 		{
-			list.reset();
-			updateRows(rows, tracker, list, lastCursor ?? null);
-
-			const freshNewest = getNewestId(rows, key);
-			if (freshNewest !== null)
+			/**
+			 * The server says this query's first page is empty — the
+			 * resumed rows cannot belong to it (e.g. they were persisted
+			 * under a token another entity's list also resolves to).
+			 * Clear them so the empty state shows instead of another
+			 * list's data.
+			 */
+			if (!rows || rows.length === 0)
 			{
-				tracker.updateNewest(freshNewest);
+				list.reset();
+				tracker.hasMoreData = false;
+				list.updateHasItems();
+				return;
 			}
+
+			const key = list.key;
+
+			/**
+			 * Without a key rows cannot be matched, so the resumed rows
+			 * stay as they are and only pagination continues.
+			 */
+			if (!key)
+			{
+				tracker.currentOffset = startOffset + count;
+				return;
+			}
+
+			/**
+			 * No key overlap between the resumed window and the fresh
+			 * first page means the resumed rows belong to a DIFFERENT
+			 * result set — swap wholesale instead of merging, so stale
+			 * rows never linger under fresh ones.
+			 */
+			const resumedKeys = new Set(resumed.map((row) => row && row[key]));
+			const overlaps = rows.some((row) => row && resumedKeys.has(row[key]));
+			if (!overlaps)
+			{
+				list.reset();
+				if (direction === 'up')
+				{
+					updateRowsAtTop(rows, tracker, list, lastCursor ?? null);
+				}
+				else
+				{
+					updateRows(rows, tracker, list, lastCursor ?? null);
+				}
+
+				const freshNewest = getNewestId(rows, key);
+				if (freshNewest !== null)
+				{
+					tracker.updateNewest(freshNewest);
+				}
+				return;
+			}
+
+			/**
+			 * A short response to a request no larger than one page is
+			 * the end of the data (a server honours its own page size),
+			 * so the refresh covers every resumed row.
+			 */
+			const reachedEnd = (rows.length < requested && requested <= tracker.limit);
+			const serverOrder = (direction === 'up')? resumed.slice().reverse() : resumed;
+			const merged = mergeResumedWindow(serverOrder, rows, key, reachedEnd);
+
+			applyResumedWindow(list, resumed, merged, rows, direction);
+			list.updateHasItems();
+
+			/**
+			 * Genuine resume: continue pagination from the end of the
+			 * merged rows.
+			 */
+			tracker.currentOffset = startOffset + merged.length;
+			if (reachedEnd)
+			{
+				tracker.hasMoreData = false;
+			}
+
+			const coveredAll = (requested >= count && rows.length >= requested);
+			if (coveredAll || reachedEnd)
+			{
+				tracker.lastCursor = lastCursor ?? null;
+			}
+
+			const newestId = getNewestId(rows, key);
+			if (newestId !== null)
+			{
+				tracker.updateNewest(newestId);
+			}
+		};
+
+		if (typeof options.onApply === 'function')
+		{
+			options.onApply(apply);
 			return;
 		}
 
-		/**
-		 * Genuine resume: refresh the resumed rows in place and continue
-		 * pagination from the end of the window.
-		 */
-		list.modify(rows);
-		tracker.currentOffset = count;
-
-		if (rows.length >= count)
-		{
-			tracker.lastCursor = lastCursor ?? null;
-		}
-
-		const newestId = getNewestId(rows, key);
-		if (newestId !== null)
-		{
-			tracker.updateNewest(newestId);
-		}
+		apply();
 	}, () =>
 	{
-		tracker.loading = false;
+		if (tracker.isCurrent(generation))
+		{
+			tracker.loading = false;
+		}
 	});
 };
-
 /**
  * Fetch and prepend newer items to the list.
  * This is designed to be called manually (e.g., via timer/polling) rather than on scroll.
@@ -735,13 +1078,26 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
 	}
 
 	tracker.loadingNewer = true;
-	invokeFetch(fetchNewerCallback, tracker, (rows, newestId) =>
+	const generation = tracker.generation;
+	invokeFetch(fetchNewerCallback, tracker, (rows, newestId, failed = false) =>
 	{
-		prependRows(rows, tracker, list, newestId);
+		// A reset since the request was issued already released the flag.
+		if (!tracker.isCurrent(generation))
+		{
+			return;
+		}
+
+		if (failed !== true)
+		{
+			prependRows(rows, tracker, list, newestId);
+		}
 		tracker.loadingNewer = false;
 	}, () =>
 	{
-		tracker.loadingNewer = false;
+		if (tracker.isCurrent(generation))
+		{
+			tracker.loadingNewer = false;
+		}
 	});
 };
 
@@ -760,9 +1116,11 @@ export const fetchAndPrepend = (fetchNewerCallback, tracker, list) =>
  *   function `(metrics) => pixels`, or null/undefined to use one viewport height.
  *   Loading is triggered when the user is within this distance of the trigger edge,
  *   which lets new items render before they scroll into view (industry standard).
+ * @param {object|null} [rowWindow] - A RowWindow that caps the rows (`maxRows`). Loaded
+ *   pages are recorded on it, and scrolling back to rows it dropped re-fetches them.
  * @returns {function} A scroll event handler function.
  */
-export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down', listCache = 'list', threshold) =>
+export const createScrollHandler = (container, tracker, fetchCallback, direction = 'down', listCache = 'list', threshold, rowWindow = null) =>
 {
 	const canLoadFunc = direction === 'up' ? canLoadAtTop : canLoad;
 	const isUpDirection = direction === 'up';
@@ -793,6 +1151,21 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 			return;
 		}
 
+		/**
+		 * Rows the window dropped from the newest end come back first
+		 * when the user scrolls back to that end.
+		 */
+		// @ts-ignore
+		if (!callBack && rowWindow && !tracker.loading && rowWindow.hasTrimmed() && rowWindow.isNearTrimmedEdge(metrics, effectiveThreshold))
+		{
+			const list = getListFromParent(parent, listCache);
+			// @ts-ignore
+			if (list && rowWindow.restore(list))
+			{
+				return;
+			}
+		}
+
 		// Always fetch on the initial call (callBack signals the onCreated load).
 		// The scroll-position check only gates subsequent pagination loads triggered
 		// by scroll events, not the first data fetch.
@@ -805,8 +1178,30 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 			}
 
 			tracker.loading = true;
-			invokeFetch(fetchCallback, tracker, (rows, lastCursor) =>
+
+			/**
+			 * Remember which request this is and which list it was issued
+			 * for. A reset, refresh or destroy moves the tracker generation
+			 * on, and a replacement list can register under the same cache
+			 * name; in both cases the response belongs to a state that no
+			 * longer exists and must not be applied.
+			 */
+			const generation = tracker.generation;
+			const owner = peekListFromParent(parent, listCache);
+
+			/**
+			 * The position this page is requested from, so the row
+			 * window can repeat the request after dropping the page.
+			 */
+			const request = { offset: tracker.currentOffset, cursor: tracker.lastCursor };
+
+			invokeFetch(fetchCallback, tracker, (rows, lastCursor, failed = false) =>
 			{
+				if (!tracker.isCurrent(generation))
+				{
+					return;
+				}
+
 				// Re-read the list reference here so it resolves after the async
 				// fetch completes. When BiDirectionalContainer is used inside an
 				// Atom (no intermediate Component scope), the child List Jot may
@@ -814,21 +1209,33 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				// handleScroll is called synchronously during onCreated.
 				const list = getListFromParent(parent, listCache);
 
-				if (callBack)
-				{
-					callBack();
-				}
-
-				// Without a list reference there is nothing to update; release
+				// Without a list reference (or with a different list than the
+				// one the request was for) there is nothing to update; release
 				// the loading flag so pagination is not permanently frozen.
-				if (!list)
+				if (!list || (owner && list !== owner))
 				{
 					tracker.loading = false;
 					return;
 				}
 
+				/**
+				 * A failed request is not an empty page: keep the current
+				 * rows (skipping the initial reset), leave hasMoreData alone
+				 * and release the flag so the next scroll can retry.
+				 */
+				if (failed === true)
+				{
+					tracker.loading = false;
+					return;
+				}
+
+				if (callBack)
+				{
+					callBack();
+				}
+
 				// Check if this is initial load BEFORE updating (which increments offset)
-				const isInitialLoad = tracker.currentOffset === 0;
+				const isInitialLoad = tracker.currentOffset === tracker.initialOffset;
 
 				// Use appropriate update function based on direction
 				if (isUpDirection)
@@ -841,6 +1248,23 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 					// jump-to-top.
 					updateRowsAtTop(rows, tracker, list, lastCursor, container, () =>
 					{
+						// A reset during the restore frames owns the flag now.
+						if (!tracker.isCurrent(generation))
+						{
+							return;
+						}
+
+						/**
+						 * Trim once the scroll restore has settled: removing
+						 * the bottom rows earlier would shrink the height the
+						 * restore measures against.
+						 */
+						if (rowWindow && rows && rows.length > 0)
+						{
+							// @ts-ignore
+							rowWindow.record(list, request, rows.length);
+						}
+
 						// Arm the cooldown before releasing so the same fling's
 						// trailing scroll events can't immediately re-trigger.
 						cooldownUntil = performance.now() + 300;
@@ -850,6 +1274,11 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				else
 				{
 					updateRows(rows, tracker, list, lastCursor);
+					if (rowWindow && rows && rows.length > 0)
+					{
+						// @ts-ignore
+						rowWindow.record(list, request, rows.length);
+					}
 					tracker.loading = false;
 				}
 
@@ -860,7 +1289,7 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				 */
 				if (isInitialLoad)
 				{
-					const newestId = getNewestId(rows);
+					const newestId = getNewestId(rows, list.key);
 					if (newestId !== null)
 					{
 						tracker.updateNewest(newestId);
@@ -868,7 +1297,10 @@ export const createScrollHandler = (container, tracker, fetchCallback, direction
 				}
 			}, () =>
 			{
-				tracker.loading = false;
+				if (tracker.isCurrent(generation))
+				{
+					tracker.loading = false;
+				}
 			});
 		}
 	};
@@ -903,8 +1335,22 @@ export const createTableScrollHandler = (container, tracker, fetchCallback, thre
 			}
 
 			tracker.loading = true;
-			invokeFetch(fetchCallback, tracker, (rows, lastCursor) =>
+			const generation = tracker.generation;
+			invokeFetch(fetchCallback, tracker, (rows, lastCursor, failed = false) =>
 			{
+				// Superseded by a reset, refresh or destroy.
+				if (!tracker.isCurrent(generation))
+				{
+					return;
+				}
+
+				// Keep the current rows on failure so the next scroll can retry.
+				if (failed === true)
+				{
+					tracker.loading = false;
+					return;
+				}
+
 				if (callBack)
 				{
 					callBack();
@@ -914,7 +1360,10 @@ export const createTableScrollHandler = (container, tracker, fetchCallback, thre
 				tracker.loading = false;
 			}, () =>
 			{
-				tracker.loading = false;
+				if (tracker.isCurrent(generation))
+				{
+					tracker.loading = false;
+				}
 			});
 		}
 	};

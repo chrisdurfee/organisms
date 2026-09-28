@@ -17,7 +17,7 @@ import { RowDivider } from './row-divider.js';
  * @param {*} data
  * @returns {*}
  */
-const clone = (data) =>
+const cloneItems = (data) =>
 {
 	if (Array.isArray(data))
 	{
@@ -42,6 +42,150 @@ const clone = (data) =>
 };
 
 /**
+ * The estimated row height (px) used by `contentVisibility` when no
+ * `rowHeight` is given.
+ *
+ * @type {number}
+ */
+const DEFAULT_ROW_HEIGHT = 64;
+
+/**
+ * Builds the inline style that lets the browser skip rendering an
+ * off-screen row while reserving its estimated height.
+ *
+ * @param {*} rowHeight
+ * @returns {string}
+ */
+const getRowVisibilityStyle = (rowHeight) =>
+{
+	const height = Number(rowHeight);
+	const size = (Number.isFinite(height) && height > 0)? height : DEFAULT_ROW_HEIGHT;
+	return `content-visibility:auto;contain-intrinsic-size:auto ${size}px`;
+};
+
+/**
+ * Returns whether any key occurs more than once in the items.
+ *
+ * @param {Array<object>} items
+ * @param {string} key
+ * @returns {boolean}
+ */
+const hasDuplicateKeys = (items, key) =>
+{
+	const seen = new Set();
+	for (let i = 0, length = items.length; i < length; i++)
+	{
+		const item = items[i];
+		if (!item)
+		{
+			continue;
+		}
+
+		const keyValue = item[key];
+		if (seen.has(keyValue))
+		{
+			return true;
+		}
+		seen.add(keyValue);
+	}
+	return false;
+};
+
+/**
+ * The list that owns each linked parent key, per parent data object.
+ *
+ * Linking is two-way, so two sibling lists linked to the same parent key
+ * would overwrite each other's hasItems (one list emptying would show the
+ * other's empty state). The first live list to link a key owns it; a
+ * sibling that finds the key taken keeps its own local hasItems instead.
+ *
+ * @type {WeakMap<object, Map<string, object>>}
+ */
+const parentLinkOwners = new WeakMap();
+
+/**
+ * Claims a parent data key for a list. Succeeds when the key is free,
+ * already owned by this list, or owned by a list that is no longer
+ * rendered (destroyed, or a persisted instance being resumed).
+ *
+ * @param {object} parentData
+ * @param {string} attr
+ * @param {object} list
+ * @returns {boolean}
+ */
+const claimParentLink = (parentData, attr, list) =>
+{
+	let owners = parentLinkOwners.get(parentData);
+	if (!owners)
+	{
+		owners = new Map();
+		parentLinkOwners.set(parentData, owners);
+	}
+
+	const owner = owners.get(attr);
+	if (owner && owner !== list && owner.rendered === true)
+	{
+		return false;
+	}
+
+	owners.set(attr, list);
+	return true;
+};
+
+/**
+ * Releases a parent data key claimed by a list.
+ *
+ * @param {object|null} parentData
+ * @param {string} attr
+ * @param {object} list
+ * @returns {void}
+ */
+const releaseParentLink = (parentData, attr, list) =>
+{
+	const owners = (parentData)? parentLinkOwners.get(parentData) : null;
+	if (owners && owners.get(attr) === list)
+	{
+		owners.delete(attr);
+	}
+};
+
+/**
+ * The most skeleton rows a list derives from its page size.
+ *
+ * @type {number}
+ */
+const MAX_SKELETON_ROWS = 10;
+
+/**
+ * Resolves how many skeleton rows to render.
+ *
+ * An explicit `skeleton.number` always wins. Otherwise a list that knows
+ * its page `limit` renders one placeholder per expected row (capped at
+ * MAX_SKELETON_ROWS) so the first page replaces the skeleton without the
+ * content height jumping; lists without a limit keep the fallback count.
+ *
+ * @param {*} skeletonConfig
+ * @param {*} limit
+ * @param {number} fallback
+ * @returns {number}
+ */
+export const getSkeletonCount = (skeletonConfig, limit, fallback) =>
+{
+	if (skeletonConfig && typeof skeletonConfig === 'object' && skeletonConfig.number)
+	{
+		return skeletonConfig.number;
+	}
+
+	const pageSize = Math.floor(Number(limit));
+	if (Number.isFinite(pageSize) && pageSize > 0)
+	{
+		return Math.min(pageSize, MAX_SKELETON_ROWS);
+	}
+
+	return fallback;
+};
+
+/**
  * List
  *
  * This will create a list component.
@@ -54,9 +198,35 @@ const clone = (data) =>
  * @property {object} [divider] - The divider configuration
  * @property {function} rowItem - Function to render each row item
  * @property {string} [cache] - The cache name to use
- * @property {boolean} [linkParent] - The parent data to link
+ * @property {boolean|string} [linkParent] - Links the list's hasItems to the parent data.
+ *   `true`/unset links the parent's `hasItems` key; a string links the parent key of
+ *   that name instead (use one per list to observe several sibling lists); `false`
+ *   disables the link. Only one live list can own a parent key: a sibling list that
+ *   finds the key already linked keeps its own hasItems.
  * @property {boolean} [isDynamic] - Whether the list is dynamic
  * @property {object} [skeleton] - Skeleton loader configuration `{ number, row }` shown before data loads.
+ *   Without `number` the row count defaults to min(limit, 10) when `limit` is set, otherwise 3.
+ * @property {number} [limit] - The page size of the container feeding the list. Only used to
+ *   size the default skeleton.
+ * @property {string} [minHeight] - A CSS min-height reserved on the list while it is loading
+ *   (hasItems is null) so content does not pop in. Removed once rows or the empty state
+ *   render. Off by default.
+ * @property {boolean} [clone=true] - Deep-copies (structuredClone) the initial `items` and
+ *   every batch passed to append/prepend/mingle/merge/modify so later changes by the caller
+ *   never reach the list. Pass `false` to use the item objects as given and keep a single
+ *   copy of the data in memory; the caller must then not mutate those objects afterwards
+ *   (the list still copies the outer arrays, so reusing a batch array is safe). `setRows()`
+ *   never copies, whatever this is set to.
+ * @property {number} [maxRows] - Caps the number of rows kept. After an append the oldest
+ *   rows at the top are dropped, after a prepend the rows at the bottom. Dropped rows are
+ *   gone for good (nothing re-fetches them); ScrollableList's `maxRows` windows the rows
+ *   and re-fetches them instead. Not applied to lists with a `divider`. Unlimited by default.
+ * @property {boolean} [contentVisibility=false] - Adds `content-visibility:auto` and
+ *   `contain-intrinsic-size:auto <rowHeight>px` to each row element so the browser skips
+ *   rendering rows that are off-screen without changing the DOM. Rows built from a
+ *   Component instance without a `key` are left as they are.
+ * @property {number} [rowHeight=64] - The estimated row height (px) reserved for an
+ *   unrendered row when `contentVisibility` is on.
  *
  * @returns {Component}
  */
@@ -102,7 +272,7 @@ export const List = Jot(
 	setData()
 	{
 		// @ts-ignore
-		const items = (this.items) ? clone(this.items) : [];
+		const items = (this.items) ? this.copyItems(this.items) : [];
 
 		/**
 		 * Skeleton requires a row layout function; without one the list
@@ -136,6 +306,30 @@ export const List = Jot(
 	},
 
 	/**
+	 * Copies a batch of items according to the `clone` prop.
+	 *
+	 * The default deep-copies the items. With `clone: false` only the
+	 * outer array is copied (the item objects are shared with the
+	 * caller), which keeps a single copy of the data in memory while
+	 * still protecting the caller's array from the in-place array
+	 * mutations the list performs (prepend reverses its batch, delete
+	 * splices).
+	 *
+	 * @param {Array<any>} items
+	 * @returns {Array<any>}
+	 */
+	copyItems(items)
+	{
+		// @ts-ignore
+		if (this.clone === false)
+		{
+			return (Array.isArray(items))? items.slice() : items;
+		}
+
+		return cloneItems(items);
+	},
+
+	/**
 	 * Generates skeleton placeholder rows from the skeleton configuration.
 	 *
 	 * @returns {Array<object>}
@@ -144,9 +338,8 @@ export const List = Jot(
 	{
 		// @ts-ignore
 		const skeletonConfig = this.skeleton;
-		const count = (skeletonConfig && typeof skeletonConfig === 'object' && skeletonConfig.number)
-			? skeletonConfig.number
-			: 3;
+		// @ts-ignore
+		const count = getSkeletonCount(skeletonConfig, this.limit, 3);
 		const rowFn = (skeletonConfig && typeof skeletonConfig === 'object' && typeof skeletonConfig.row === 'function')
 			? skeletonConfig.row
 			: null;
@@ -281,22 +474,57 @@ export const List = Jot(
 	 */
 	linkParentData()
 	{
-		let parentValue = false;
 		// @ts-ignore
 		const parentData = this.parent?.data ?? this.parent?.context?.data ?? null;
 		// @ts-ignore
-		if (parentData && this.linkParent !== false)
-		{
-			parentValue = parentData.get('hasItems');
-			// @ts-ignore
-			this.data.link(parentData, 'hasItems');
-		}
+		const attr = this.getParentLinkKey();
 		// @ts-ignore
-		else if (this.isDynamic === true)
+		if (parentData && this.linkParent !== false && claimParentLink(parentData, attr, this))
+		{
+			// @ts-ignore
+			this.linkedParentData = parentData;
+			const parentValue = parentData.get(attr);
+			if (attr === 'hasItems')
+			{
+				// @ts-ignore
+				this.data.link(parentData, 'hasItems');
+			}
+			else
+			{
+				// @ts-ignore
+				this.data.link(parentData, attr, 'hasItems');
+
+				/**
+				 * An aliased link only syncs the initial value onto the
+				 * parent's key name, so copy it onto hasItems here.
+				 */
+				if (parentValue !== undefined)
+				{
+					// @ts-ignore
+					this.data.set('hasItems', parentValue);
+				}
+			}
+			return parentValue;
+		}
+
+		// @ts-ignore
+		if (this.isDynamic === true)
 		{
 			return undefined;
 		}
-		return parentValue;
+		return false;
+	},
+
+	/**
+	 * Returns the parent data key the list's hasItems is linked to.
+	 *
+	 * @returns {string}
+	 */
+	getParentLinkKey()
+	{
+		// @ts-ignore
+		const linkParent = this.linkParent;
+		return (typeof linkParent === 'string' && linkParent !== '')? linkParent : 'hasItems';
 	},
 
 	/**
@@ -345,6 +573,15 @@ export const List = Jot(
 		// @ts-ignore
 		this.data.attributes.hasItems = this.defaultHasItemValue;
 
+		/**
+		 * Free the parent key so a list created later under the same
+		 * parent can link to it.
+		 */
+		// @ts-ignore
+		releaseParentLink(this.linkedParentData ?? null, this.getParentLinkKey(), this);
+		// @ts-ignore
+		this.linkedParentData = null;
+
 		// When persist is enabled the item data is intentionally kept alive so
 		// the list can show the previous results immediately on resume. However
 		// the pagination cursor must be reset to null so the next fetch always
@@ -375,7 +612,11 @@ export const List = Jot(
 		// @ts-ignore
 		const rowCallBack = this.row.bind(this);
 
-		return Div({ class: 'flex flex-auto flex-col' }, [
+		return Div({
+			class: 'flex flex-auto flex-col',
+			// @ts-ignore
+			onSet: this.getMinHeightWatcher()
+		}, [
 			On('hasItems', (hasItems) =>
 			{
 				// @ts-ignore
@@ -396,6 +637,32 @@ export const List = Jot(
 				for: [this.data, 'items', rowCallBack, false]
 			})
 		]);
+	},
+
+	/**
+	 * Returns the onSet watcher that reserves `minHeight` while the list
+	 * is loading, or null when no minHeight is configured.
+	 *
+	 * hasItems stays null until the first response decides between rows
+	 * and the empty state, so the reserved height is applied exactly
+	 * while neither is rendered and cleared as soon as one of them is.
+	 *
+	 * @returns {Array<any>|null}
+	 */
+	getMinHeightWatcher()
+	{
+		// @ts-ignore
+		const minHeight = this.minHeight;
+		if (!minHeight || typeof minHeight !== 'string')
+		{
+			return null;
+		}
+
+		return ['hasItems', (hasItems, ele) =>
+		{
+			const loading = (hasItems === null || hasItems === undefined);
+			ele.style.minHeight = (loading)? minHeight : '';
+		}];
 	},
 
 	/**
@@ -444,14 +711,12 @@ export const List = Jot(
 			const keyValue = String(item[this.key]);
 
 			// If rowLayout is a Component instance or doesn't have a tag property,
-			// wrap it in a div with the data-row-key attribute
+			// it cannot carry the attribute itself, so let wrapRow() tag it
 			if (rowLayout instanceof Component || !rowLayout.tag)
 			{
-				const wrapper = Div({
-					'data-row-key': keyValue
-				}, [rowLayout]);
 				// Store in cache will happen after DOM render
-				return wrapper;
+				// @ts-ignore
+				return this.applyRowVisibility(this.wrapRow(rowLayout, keyValue));
 			}
 
 			// Otherwise add the attribute directly to the layout object
@@ -459,7 +724,51 @@ export const List = Jot(
 			rowLayout['data-row-key'] = keyValue;
 		}
 
-		return rowLayout;
+		// @ts-ignore
+		return this.applyRowVisibility(rowLayout);
+	},
+
+	/**
+	 * Adds the content-visibility style to a row layout when the
+	 * `contentVisibility` prop is on.
+	 *
+	 * Only plain tagged layouts can carry the style: a Component row
+	 * (TableBody leaves those unwrapped) is returned untouched.
+	 *
+	 * @param {object|null} layout
+	 * @returns {object|null}
+	 */
+	applyRowVisibility(layout)
+	{
+		// @ts-ignore
+		if (this.contentVisibility !== true || !layout || typeof layout !== 'object' || layout instanceof Component || !layout.tag)
+		{
+			return layout;
+		}
+
+		// @ts-ignore
+		const style = getRowVisibilityStyle(this.rowHeight);
+		// @ts-ignore
+		const current = (typeof layout.style === 'string')? layout.style.trim() : '';
+		// @ts-ignore
+		layout.style = (current)? `${current.replace(/;$/, '')};${style}` : style;
+		return layout;
+	},
+
+	/**
+	 * Wraps a row layout that cannot carry the data-row-key attribute
+	 * itself (a Component instance or a layout without a tag) in an
+	 * element that does.
+	 *
+	 * @param {object} rowLayout
+	 * @param {string} keyValue
+	 * @returns {object}
+	 */
+	wrapRow(rowLayout, keyValue)
+	{
+		return Div({
+			'data-row-key': keyValue
+		}, [rowLayout]);
 	},
 
 	/**
@@ -597,6 +906,24 @@ export const List = Jot(
 		}
 
 		// @ts-ignore
+		this.removeRows(items);
+
+		// Update hasItems after removal
+		// @ts-ignore
+		this.updateHasItems();
+	},
+
+	/**
+	 * Removes the rows matching the items' keys from the store and the
+	 * DOM in one pass, without updating hasItems.
+	 *
+	 * @param {array} items
+	 * @returns {void}
+	 */
+	removeRows(items)
+	{
+
+		// @ts-ignore
 		const key = this.key;
 		const removedKeys = new Set();
 		for (let i = 0, length = items.length; i < length; i++)
@@ -642,10 +969,6 @@ export const List = Jot(
 		this.data.stage.items = remaining;
 		// @ts-ignore
 		this.itemIndexCacheStale = true;
-
-		// Update hasItems after removal
-		// @ts-ignore
-		this.updateHasItems();
 	},
 
 	/**
@@ -661,6 +984,13 @@ export const List = Jot(
 
 	/**
 	 * This will set the items in the list.
+	 *
+	 * Unlike append/prepend/mingle/merge/modify, setRows never copies,
+	 * whatever the `clone` prop is set to: the rows (and, when the
+	 * rows can be reconciled by key, the array itself) become the
+	 * list's items as given. Callers must not mutate the rows or the
+	 * array afterwards; pass a copy when they need to keep changing
+	 * their own data.
 	 *
 	 * @param {array} rows
 	 * @returns {void}
@@ -874,6 +1204,21 @@ export const List = Jot(
 		// @ts-ignore
 		this.hasTrailingDivider = false;
 
+		/**
+		 * The skeleton rows were just removed with the rest of the DOM,
+		 * so drop the flag too. Left set, row() would keep returning raw
+		 * items as layouts and a resumed list would never count as having
+		 * rows. Patched silently like hasItems above.
+		 */
+		// @ts-ignore
+		if (this.data.get('showSkeleton'))
+		{
+			// @ts-ignore
+			this.data.stage.showSkeleton = false;
+			// @ts-ignore
+			this.data.attributes.showSkeleton = false;
+		}
+
 		// Clear the key indexes
 		// @ts-ignore
 		this.clearIndexes();
@@ -907,8 +1252,22 @@ export const List = Jot(
 			items = [items];
 		}
 
-		items = clone(items);
+		// @ts-ignore
+		this.appendRows(this.copyItems(items));
+		// @ts-ignore
+		this.enforceMaxRows(true);
+	},
 
+	/**
+	 * Appends a batch that has already been copied.
+	 *
+	 * @param {Array<object>} items
+	 * @param {boolean} [syncHasItems=true] - False lets a batch caller
+	 *   update hasItems once when it is done.
+	 * @returns {void}
+	 */
+	appendRows(items, syncHasItems = true)
+	{
 		/**
 		 * This will get all the new rows to be batched later.
 		 */
@@ -988,7 +1347,7 @@ export const List = Jot(
 		// Only update hasItems reactively when the state actually needs
 		// to change, to avoid triggering unnecessary batched publishes.
 		// @ts-ignore
-		if (this.data.get('hasItems') !== true)
+		if (syncHasItems && this.data.get('hasItems') !== true)
 		{
 			// @ts-ignore
 			this.updateHasItems();
@@ -1001,6 +1360,112 @@ export const List = Jot(
 			// @ts-ignore
 			ChildHelper.append(rows, this.listContainer, this);
 		}
+	},
+
+	/**
+	 * Applies a list of diff rows (`{ item, status }`) in one pass.
+	 *
+	 * Updated rows are replaced in place. Added rows are collected and
+	 * inserted as one batch, so the item array is copied once rather
+	 * than once per added row. The result is identical to applying the
+	 * rows one at a time: appended rows (with or without dividers) and
+	 * prepended rows without dividers land in the same order either
+	 * way. A divider list's prepend is position sensitive (each row
+	 * compares against the row above it and drops the seam divider), so
+	 * those rows are still placed one at a time exactly as prepend()
+	 * places them, but the item array is committed once at the end.
+	 *
+	 * @param {Array<object>} rows
+	 * @param {boolean} [append=true]
+	 * @param {function|null} [peekExisting] - Returns `{ first, count }`
+	 *   for the existing rows as the per-row path would see them at a
+	 *   given change index. Defaults to the current items.
+	 * @returns {void}
+	 */
+	applyChanges(rows, append = true, peekExisting = null)
+	{
+		const added = [];
+		const pendingTop = [];
+		// @ts-ignore
+		const dividedPrepend = (!append && !!this.rowDivider);
+
+		for (let i = 0, length = rows.length; i < length; i++)
+		{
+			const row = rows[i];
+			if (row.status === 'unchanged')
+			{
+				continue;
+			}
+
+			if (row.status !== 'added')
+			{
+				// @ts-ignore
+				this.replace(row, append);
+				continue;
+			}
+
+			if (!dividedPrepend)
+			{
+				added.push(row.item);
+				continue;
+			}
+
+			/**
+			 * The pending rows sit above the committed items, so the row
+			 * the next one is compared against is the last one placed.
+			 */
+			// @ts-ignore
+			const existing = this.data.get('items') || [];
+			const state = (peekExisting)? peekExisting(i) : null;
+			const count = pendingTop.length + ((state)? state.count : existing.length);
+			let first = null;
+			if (pendingTop.length > 0)
+			{
+				first = pendingTop[pendingTop.length - 1];
+			}
+			else
+			{
+				first = (state)? state.first : existing[0];
+			}
+
+			// @ts-ignore
+			this.prependDividedRow(row.item, count > 0, first);
+			pendingTop.push(row.item);
+		}
+
+		if (pendingTop.length > 0)
+		{
+			// @ts-ignore
+			const existingItems = this.data.get('items') || [];
+			const newItems = pendingTop.reverse().concat(existingItems);
+			// @ts-ignore
+			this.data.attributes.items = newItems;
+			// @ts-ignore
+			this.data.stage.items = newItems;
+			// @ts-ignore
+			this.itemIndexCacheStale = true;
+			// @ts-ignore
+			this.elementCacheStale = true;
+		}
+
+		if (added.length === 0)
+		{
+			return;
+		}
+
+		if (append)
+		{
+			// @ts-ignore
+			this.appendRows(added, false);
+			return;
+		}
+
+		/**
+		 * A batched prepend reverses the batch, so the resulting order
+		 * matches prepending the rows one at a time.
+		 */
+		// @ts-ignore
+		this.prependRows(added, false);
 	},
 
 	/**
@@ -1022,7 +1487,8 @@ export const List = Jot(
 		// @ts-ignore
 		this.removeSkeleton();
 
-		newItems = clone(newItems);
+		// @ts-ignore
+		newItems = this.copyItems(newItems);
 
 		// @ts-ignore
 		const oldItems = this.data.get('items') || [];
@@ -1041,45 +1507,26 @@ export const List = Jot(
 		if (withDelete && changes.deletedItems.length > 0)
 		{
 			// @ts-ignore
-			this.remove(changes.deletedItems);
+			this.removeRows(changes.deletedItems);
 		}
 
-		/**
-		 * This will add or update the new rows. Added rows are collected
-		 * and inserted in one batch because each append() copies the whole
-		 * item array, which makes per-row inserts cost O(items * added).
-		 * Divider seams are position sensitive, so those lists keep the
-		 * per-row path.
-		 */
-		const changesLength = changes.changes.length;
-		const added = [];
-		for (let i = 0; i < changesLength; i++)
-		{
-			const row = changes.changes[i];
-			// @ts-ignore
-			if (row.status === 'added' && !this.rowDivider)
-			{
-				added.push(row.item);
-				continue;
-			}
+		// @ts-ignore
+		this.applyChanges(changes.changes, true);
 
-			// @ts-ignore
-			this.replace(row);
-		}
-
-		if (added.length > 0)
-		{
-			// @ts-ignore
-			this.append(added);
-		}
-
-		// Update hasItems after mingling
+		// Update hasItems once after mingling
 		// @ts-ignore
 		this.updateHasItems();
+		// @ts-ignore
+		this.enforceMaxRows(true);
 	},
 
 	/**
 	 * This will mingle the new items with the old items.
+	 *
+	 * With `deleteIfFound` every new item replaces its existing row
+	 * (the old row is removed and the new one is inserted at the
+	 * append/prepend edge). The removals happen in one pass over the
+	 * list instead of one pass per row.
 	 *
 	 * @param {Array<Object>} newItems
 	 * @param {boolean} append
@@ -1098,7 +1545,8 @@ export const List = Jot(
 		// @ts-ignore
 		this.removeSkeleton();
 
-		newItems = clone(newItems);
+		// @ts-ignore
+		newItems = this.copyItems(newItems);
 
 		// @ts-ignore
 		const oldItems = this.data.get('items') || [];
@@ -1109,45 +1557,128 @@ export const List = Jot(
 		 */
 		// @ts-ignore
 		const changes = DataHelper.diff(oldItems, newItems, this.key);
+		const rows = changes.changes;
 
-		/**
-		 * This will add or update the new rows. Added rows are batched;
-		 * see mingle() for why. A batched prepend reverses the batch, so
-		 * the resulting order matches the per-row path in both
-		 * directions.
-		 */
-		const changesLength = changes.changes.length;
-		const added = [];
-		for (let i = 0; i < changesLength; i++)
+		if (!deleteIfFound)
 		{
-			const row = changes.changes[i];
-			if (deleteIfFound)
+			// @ts-ignore
+			this.applyChanges(rows, append);
+		}
+		// @ts-ignore
+		else if (this.rowDivider && hasDuplicateKeys(newItems, this.key))
+		{
+			/**
+			 * A repeated key removes the copy an earlier row just
+			 * inserted, which leaves that row's divider behind. Keeping
+			 * that output exact needs the per-row order.
+			 */
+			for (let i = 0, length = rows.length; i < length; i++)
 			{
+				const row = rows[i];
 				// @ts-ignore
-				this.remove([row.item]);
+				this.removeRows([row.item]);
 				row.status = 'added';
+				// @ts-ignore
+				this.replace(row, append);
+			}
+		}
+		else
+		{
+			// @ts-ignore
+			const peekExisting = (!append && this.rowDivider)? this.createRemovalPeek(oldItems, rows) : null;
+
+			// @ts-ignore
+			this.removeRows(newItems);
+			for (let i = 0, length = rows.length; i < length; i++)
+			{
+				rows[i].status = 'added';
 			}
 
 			// @ts-ignore
-			if (row.status === 'added' && !this.rowDivider)
+			this.applyChanges(rows, append, peekExisting);
+		}
+
+		// Update hasItems once after merging
+		// @ts-ignore
+		this.updateHasItems();
+		// @ts-ignore
+		this.enforceMaxRows(append);
+	},
+
+	/**
+	 * Returns a peek callback for applyChanges() that reports the
+	 * existing rows the per-row merge(..., deleteIfFound) path would see
+	 * at each change: that path removes a row's old copy right before
+	 * inserting it, so at change k only the rows matched by changes
+	 * 0..k have been removed. The first row a divider prepend compares
+	 * against depends on that.
+	 *
+	 * @param {Array<object>} oldItems
+	 * @param {Array<object>} rows
+	 * @returns {function}
+	 */
+	createRemovalPeek(oldItems, rows)
+	{
+		// @ts-ignore
+		const key = this.key;
+
+		/**
+		 * The change index at which each existing key is removed.
+		 */
+		const removedAt = new Map();
+		for (let i = 0, length = rows.length; i < length; i++)
+		{
+			const keyValue = rows[i].item[key];
+			if (!removedAt.has(keyValue))
 			{
-				added.push(row.item);
+				removedAt.set(keyValue, i);
+			}
+		}
+
+		/**
+		 * removedByChange[k] is how many existing rows are gone once
+		 * change k has been applied.
+		 */
+		const removedByChange = new Array(rows.length).fill(0);
+		const remaining = [];
+		for (let i = 0, length = oldItems.length; i < length; i++)
+		{
+			const item = oldItems[i];
+			if (!item)
+			{
+				remaining.push({ item, at: Infinity });
 				continue;
 			}
 
-			// @ts-ignore
-			this.replace(row, append);
+			const at = removedAt.get(item[key]);
+			if (at === undefined)
+			{
+				remaining.push({ item, at: Infinity });
+				continue;
+			}
+
+			removedByChange[at]++;
+			remaining.push({ item, at });
 		}
 
-		if (added.length > 0)
+		for (let i = 1; i < removedByChange.length; i++)
 		{
-			// @ts-ignore
-			(append)? this.append(added) : this.prepend(added);
+			removedByChange[i] += removedByChange[i - 1];
 		}
 
-		// Update hasItems after mingling
-		// @ts-ignore
-		this.updateHasItems();
+		let pointer = 0;
+		return (index) =>
+		{
+			while (pointer < remaining.length && remaining[pointer].at <= index)
+			{
+				pointer++;
+			}
+
+			return {
+				first: (pointer < remaining.length)? remaining[pointer].item : undefined,
+				count: oldItems.length - removedByChange[index]
+			};
+		};
 	},
 
 	/**
@@ -1170,7 +1701,7 @@ export const List = Jot(
 		this.removeSkeleton();
 
 		// @ts-ignore
-		const updatingItems = clone(updatedItems);
+		const updatingItems = this.copyItems(updatedItems);
 
 		// @ts-ignore
 		const oldItems = this.data.get('items') || [];
@@ -1180,17 +1711,14 @@ export const List = Jot(
 		/**
 		 * This will add or update the new rows.
 		 */
-		const changesLength = changes.length;
-		for (let i = 0; i < changesLength; i++)
-		{
-			const row = changes[i];
-			// @ts-ignore
-			this.replace(row);
-		}
+		// @ts-ignore
+		this.applyChanges(changes, true);
 
 		// Update hasItems after modifying
 		// @ts-ignore
 		this.updateHasItems();
+		// @ts-ignore
+		this.enforceMaxRows(true);
 	},
 
 	/**
@@ -1214,8 +1742,75 @@ export const List = Jot(
 			items = [items];
 		}
 
-		items = clone(items);
+		// @ts-ignore
+		this.prependRows(this.copyItems(items));
+		// @ts-ignore
+		this.enforceMaxRows(false);
+	},
 
+	/**
+	 * Places one row at the top exactly as prepend([item]) does (seam
+	 * divider, boundary compare, row build), without touching the item
+	 * array. applyChanges() commits the array once for the whole batch.
+	 *
+	 * @param {object} item
+	 * @param {boolean} hasExisting - Whether any row sits above which the item is placed.
+	 * @param {object|undefined} firstItem - The row currently at the top.
+	 * @returns {void}
+	 */
+	prependDividedRow(item, hasExisting, firstItem)
+	{
+		// @ts-ignore
+		const divider = this.rowDivider;
+		if (hasExisting)
+		{
+			divider.setPrependBoundary(firstItem);
+		}
+
+		// @ts-ignore
+		const container = this.listContainer;
+		if (container)
+		{
+			const firstChild = container.firstChild;
+			if (firstChild && firstChild.getAttribute && firstChild.getAttribute('data-divider') === 'true')
+			{
+				container.removeChild(firstChild);
+			}
+		}
+
+		const rows = [];
+		divider.prepend(item, rows);
+
+		// @ts-ignore
+		const rowElement = this.row(item, 0);
+		if (rowElement)
+		{
+			rows.push(rowElement);
+		}
+
+		if (!hasExisting)
+		{
+			divider.lastAppend = divider.getValue(item);
+		}
+
+		if (rows.length > 0 && container)
+		{
+			// @ts-ignore
+			ChildHelper.prepend(rows, container, this);
+		}
+	},
+
+	/**
+	 * Prepends a batch that has already been copied. The batch is
+	 * reversed in place.
+	 *
+	 * @param {Array<object>} items
+	 * @param {boolean} [syncHasItems=true] - False lets a batch caller
+	 *   update hasItems once when it is done.
+	 * @returns {void}
+	 */
+	prependRows(items, syncHasItems = true)
+	{
 		// Set the prepend boundary to the first existing item's date
 		// @ts-ignore
 		if (this.rowDivider)
@@ -1266,10 +1861,12 @@ export const List = Jot(
 			}
 
 			/**
-			 * This will build the new rows that will be prepended.
+			 * This will build the new rows that will be prepended. The
+			 * reversed batch is placed in front of the existing items in
+			 * this order, so position i is the row's final data index.
 			 */
 			// @ts-ignore
-			const rowElement = this.row(item, 0);
+			const rowElement = this.row(item, i);
 			if (rowElement)
 			{
 				rows.push(rowElement);
@@ -1319,7 +1916,7 @@ export const List = Jot(
 		// the for: directive to re-process items asynchronously, which
 		// disrupts scroll position preservation in scroll-up lists.
 		// @ts-ignore
-		if (this.data.get('hasItems') !== true)
+		if (syncHasItems && this.data.get('hasItems') !== true)
 		{
 			// @ts-ignore
 			this.updateHasItems();
@@ -1331,6 +1928,118 @@ export const List = Jot(
 			// @ts-ignore
 			ChildHelper.prepend(rows, this.listContainer, this);
 		}
+	},
+
+	/**
+	 * Drops rows beyond the `maxRows` cap from one end of the list.
+	 *
+	 * @param {boolean} fromStart - True drops the top rows (after an
+	 *   append), false the bottom rows (after a prepend).
+	 * @returns {void}
+	 */
+	enforceMaxRows(fromStart)
+	{
+		// @ts-ignore
+		const maxRows = Math.floor(Number(this.maxRows));
+		// @ts-ignore
+		if (!(maxRows > 0) || this.rowDivider)
+		{
+			return;
+		}
+
+		// @ts-ignore
+		const length = (this.data.get('items') || []).length;
+		if (length > maxRows)
+		{
+			// @ts-ignore
+			this.trimRows(length - maxRows, fromStart);
+		}
+	},
+
+	/**
+	 * Removes `count` rows from the top or the bottom of the list in one
+	 * pass and returns the removed items.
+	 *
+	 * Used by `maxRows` and by the scroll containers' row windowing.
+	 * Dividers are not handled: lists with a divider are never trimmed.
+	 *
+	 * @param {number} count
+	 * @param {boolean} [fromStart=true]
+	 * @returns {Array<object>}
+	 */
+	trimRows(count, fromStart = true)
+	{
+		// @ts-ignore
+		const items = this.data.get('items') || [];
+		const total = Math.min(Math.max(0, Math.floor(Number(count)) || 0), items.length);
+		// @ts-ignore
+		if (total === 0 || this.data.get('showSkeleton'))
+		{
+			return [];
+		}
+
+		const removed = (fromStart)? items.slice(0, total) : items.slice(items.length - total);
+		const remaining = (fromStart)? items.slice(total) : items.slice(0, items.length - total);
+
+		// @ts-ignore
+		const key = this.key;
+		// @ts-ignore
+		const container = this.listContainer;
+		if (container)
+		{
+			if (key)
+			{
+				for (let i = 0, length = removed.length; i < length; i++)
+				{
+					const item = removed[i];
+					if (!item)
+					{
+						continue;
+					}
+
+					// @ts-ignore
+					const rowElement = this.findRowElementByKey(item[key]);
+					if (rowElement)
+					{
+						ChildHelper.remove(rowElement);
+					}
+
+					// @ts-ignore
+					this.elementCache.delete(String(item[key]));
+				}
+			}
+			else
+			{
+				/**
+				 * Without a key the rows are matched by position: one
+				 * element per item.
+				 */
+				for (let i = 0; i < total; i++)
+				{
+					const element = (fromStart)? container.firstElementChild : container.lastElementChild;
+					if (!element)
+					{
+						break;
+					}
+					ChildHelper.remove(element);
+				}
+			}
+		}
+
+		// @ts-ignore
+		this.data.attributes.items = remaining;
+		// @ts-ignore
+		this.data.stage.items = remaining;
+		// @ts-ignore
+		this.itemIndexCacheStale = true;
+
+		if (remaining.length === 0)
+		{
+			// @ts-ignore
+			this.updateHasItems();
+		}
+
+		return removed;
 	},
 
 	/**

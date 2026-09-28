@@ -1,6 +1,6 @@
 # Base Organisms
 
-**Version**: 1.0.0
+**Version**: 1.1.63
 
 ## Overview
 This documentation aims to guide the enhancement of component scalability and reusability within your projects through the use of organisms. Organisms are designed to function as the medium building blocks in a component-based architecture.
@@ -122,10 +122,15 @@ The library includes advanced bi-directional pagination support for building rea
 - **`scrollDirection: 'down'`** (default): For feeds/timelines - scroll down for older items, new items appear at top
 - **`scrollDirection: 'up'`**: For chat/messaging - scroll up for older items, new messages appear at bottom
 
-For detailed documentation, see:
-- [SCROLL_DIRECTIONS.md](./docs/SCROLL_DIRECTIONS.md) - Complete scroll direction guide
-- [BI_DIRECTIONAL_IMPLEMENTATION.md](./docs/BI_DIRECTIONAL_IMPLEMENTATION.md) - Implementation guide
-- [Examples](./docs/examples/) - Working code examples
+For usage examples, see the JSDoc in [bi-directional-container.js](./src/lists/bi-directional-container.js).
+
+### Large Lists and Memory
+
+All of these are off (or unchanged) by default:
+
+- **`clone: false`** (List, DataList, ScrollableList, DynamicList, table bodies): use the item objects as given instead of deep-copying every batch, so the data is kept in memory once. The caller must not mutate those objects afterwards. `setRows()` never copies, whatever `clone` is set to.
+- **`maxRows`** (ScrollableList, BiDirectionalContainer): keep at most about `maxRows` rows. Whole pages are dropped from the end opposite the loading edge and re-fetched when the user scrolls back; the scroll position is kept when rows above the viewport are removed. On DynamicList (and a plain List) the cap simply drops the oldest rows. Not applied to lists with a divider.
+- **`contentVisibility: true`** with **`rowHeight`** (default 64): adds `content-visibility:auto; contain-intrinsic-size:auto <rowHeight>px` to each row so the browser skips rendering off-screen rows without changing the DOM.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the ISC License.

@@ -1,6 +1,136 @@
 import { Span } from "@base-framework/atoms";
 import { Component, SimpleData } from "@base-framework/base";
-import { IntervalTimer } from "../utils/timer/interval-timer.js";
+
+/**
+ * Returns whether the document is currently hidden (background tab).
+ *
+ * @returns {boolean}
+ */
+const isDocumentHidden = () => (typeof document !== 'undefined' && document.hidden === true);
+
+/**
+ * Creates a ref-counted ticker shared by every mounted time element.
+ *
+ * - It only runs while at least one element holds a reference.
+ * - Each tick is aligned to the next wall-clock boundary of the interval
+ *   (the next whole minute or second), so the elements update when the
+ *   clock does instead of up to one interval late.
+ * - It pauses while the document is hidden and, once the document is
+ *   visible again, ticks immediately (the shown times may be stale) and
+ *   then realigns.
+ *
+ * @param {number} interval
+ * @param {function} tick
+ * @returns {{ retain: function(): void, release: function(): void }}
+ */
+const createSharedTicker = (interval, tick) =>
+{
+	let refs = 0;
+
+	/**
+	 * @type {any}
+	 */
+	let timer = null;
+
+	/**
+	 * Schedules the next tick on the next wall-clock boundary.
+	 *
+	 * @returns {void}
+	 */
+	const schedule = () =>
+	{
+		const delay = interval - (Date.now() % interval);
+		timer = globalThis.setTimeout(() =>
+		{
+			timer = null;
+			tick();
+			schedule();
+		}, delay);
+	};
+
+	/**
+	 * Cancels the pending tick.
+	 *
+	 * @returns {void}
+	 */
+	const clear = () =>
+	{
+		if (timer !== null)
+		{
+			globalThis.clearTimeout(timer);
+			timer = null;
+		}
+	};
+
+	/**
+	 * Pauses while hidden and resumes with an immediate tick.
+	 *
+	 * @returns {void}
+	 */
+	const onVisibilityChange = () =>
+	{
+		if (refs === 0)
+		{
+			return;
+		}
+
+		if (isDocumentHidden())
+		{
+			clear();
+			return;
+		}
+
+		if (timer === null)
+		{
+			tick();
+			schedule();
+		}
+	};
+
+	return {
+		/**
+		 * Starts the ticker when the first element mounts.
+		 *
+		 * @returns {void}
+		 */
+		retain()
+		{
+			if (++refs !== 1)
+			{
+				return;
+			}
+
+			if (typeof document !== 'undefined')
+			{
+				document.addEventListener('visibilitychange', onVisibilityChange);
+			}
+
+			if (!isDocumentHidden())
+			{
+				schedule();
+			}
+		},
+
+		/**
+		 * Stops the ticker when the last element unmounts.
+		 *
+		 * @returns {void}
+		 */
+		release()
+		{
+			if (refs === 0 || --refs !== 0)
+			{
+				return;
+			}
+
+			clear();
+			if (typeof document !== 'undefined')
+			{
+				document.removeEventListener('visibilitychange', onVisibilityChange);
+			}
+		}
+	};
+};
 
 /**
  * This will create a simple flat data object to use to bind
@@ -23,53 +153,34 @@ const data = new SimpleData({
 const MINUTE_INTERVAL = 60000;
 
 /**
- * This will update the the data value every minute.
+ * This will update the data value on every wall-clock minute.
  *
  * The timer is NOT started at import time. It is ref-counted and only
- * runs while at least one DynamicTime element is mounted, so apps that
- * import this module (or show no time elements) pay no recurring timer
- * cost, and tree-shaking with `sideEffects: false` stays safe.
+ * runs while at least one DynamicTime element is mounted and the
+ * document is visible, so apps that import this module (or show no time
+ * elements, or sit in a background tab) pay no recurring timer cost, and
+ * tree-shaking with `sideEffects: false` stays safe.
  *
  * @constant
- * @type {IntervalTimer} timer
  */
-const timer = new IntervalTimer(MINUTE_INTERVAL, () =>
+const minuteTicker = createSharedTicker(MINUTE_INTERVAL, () =>
 {
 	data.increment('date');
 });
-
-/**
- * Number of mounted DynamicTime elements sharing the minute timer.
- *
- * @type {number}
- */
-let minuteRefs = 0;
 
 /**
  * This will start the minute timer when the first element mounts.
  *
  * @returns {void}
  */
-const retainMinuteTimer = () =>
-{
-	if (++minuteRefs === 1)
-	{
-		timer.start();
-	}
-};
+const retainMinuteTimer = () => minuteTicker.retain();
 
 /**
  * This will stop the minute timer when the last element unmounts.
  *
  * @returns {void}
  */
-const releaseMinuteTimer = () =>
-{
-	if (minuteRefs > 0 && --minuteRefs === 0)
-	{
-		timer.stop();
-	}
-};
+const releaseMinuteTimer = () => minuteTicker.release();
 
 /**
  * This will create a simple flat data object that is bound to all
@@ -90,51 +201,31 @@ const secondData = new SimpleData({
 const SECOND_INTERVAL = 1000;
 
 /**
- * This will update the second data value every second.
+ * This will update the second data value on every wall-clock second.
  *
- * Like the minute timer, this is ref-counted and only runs while at
- * least one DynamicSecondTime element is mounted.
+ * Like the minute timer, this is ref-counted, only runs while at least
+ * one DynamicSecondTime element is mounted and pauses while hidden.
  *
  * @constant
- * @type {IntervalTimer} secondTimer
  */
-const secondTimer = new IntervalTimer(SECOND_INTERVAL, () =>
+const secondTicker = createSharedTicker(SECOND_INTERVAL, () =>
 {
 	secondData.increment('date');
 });
-
-/**
- * Number of mounted DynamicSecondTime elements sharing the second timer.
- *
- * @type {number}
- */
-let secondRefs = 0;
 
 /**
  * This will start the second timer when the first element mounts.
  *
  * @returns {void}
  */
-const retainSecondTimer = () =>
-{
-	if (++secondRefs === 1)
-	{
-		secondTimer.start();
-	}
-};
+const retainSecondTimer = () => secondTicker.retain();
 
 /**
  * This will stop the second timer when the last element unmounts.
  *
  * @returns {void}
  */
-const releaseSecondTimer = () =>
-{
-	if (secondRefs > 0 && --secondRefs === 0)
-	{
-		secondTimer.stop();
-	}
-};
+const releaseSecondTimer = () => secondTicker.release();
 
 /**
  * DynamicTime
